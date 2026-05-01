@@ -14,6 +14,10 @@ class HealthCheckFilter(logging.Filter):
         return "/status" not in record.getMessage()
 log.addFilter(HealthCheckFilter())
 
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
 @app.route('/status')
 def status():
     return "OK", 200
