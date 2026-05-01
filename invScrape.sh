@@ -52,4 +52,4 @@ VENDORS=("retrosharkgaming" "redcastle" "goingaming")
       ]
     '
   done
-}# | jq -cs 'add'
+} #| jq -cs 'add'
