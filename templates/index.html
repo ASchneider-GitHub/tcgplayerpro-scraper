@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LGS Singles Search</title>
+    <style>
+        :root {
+            --bg-dark: #121416;
+            --surface-dark: #1e2124;
+            --border-color: #36393e;
+            --text-main: #eef1f5;
+            --text-dim: #b9bbbe;
+            --accent-blue: #5865f2;
+            --accent-green: #23a559;
+            /* Store Colors */
+            --retroshark: #2a9d8f;
+            --redcastle: #e63946;
+            --goingaming: #23a559;
+        }
+
+        body { background-color: var(--bg-dark); color: var(--text-main); font-family: sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 1200px; }
+        
+        textarea { width: 100%; height: 100px; background: var(--surface-dark); color: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; font-family: monospace; box-sizing: border-box; resize: vertical; outline: none; }
+        textarea:focus { border-color: var(--accent-blue); }
+        
+        .controls { display: flex; align-items: center; gap: 15px; margin: 20px 0; flex-wrap: wrap; }
+        
+        .filter-group { display: flex; align-items: center; gap: 15px; background: var(--surface-dark); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 10px; }
+        .filter-label { font-size: 14px; font-weight: bold; color: var(--text-dim); margin-right: 5px; }
+        .checkbox-wrapper { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+        .checkbox-wrapper input { cursor: pointer; accent-color: var(--accent-blue); }
+
+        button { padding: 10px 20px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn-search { background: var(--accent-blue); color: white; }
+        .btn-clear { background: transparent; color: var(--text-dim); border: 1px solid var(--border-color); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        select { background: var(--surface-dark); color: white; border: 1px solid var(--border-color); padding: 8px; border-radius: 6px; outline: none; cursor: pointer; }
+        
+        .spinner { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
+        .checkmark { color: var(--accent-green); font-weight: bold; margin-right: 8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .search-term-group { margin-top: 40px; animation: fadeIn 0.3s ease-in; }
+        .term-header { 
+            font-size: 24px; font-weight: bold; border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px; margin-bottom: 15px; color: var(--accent-blue);
+            text-transform: uppercase;
+        }
+
+        .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+
+        .card-tile {
+            background: var(--surface-dark); border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 16px; display: flex; flex-direction: column;
+            transition: border-color 0.2s;
+        }
+        
+        .card-tile.hidden-by-filter { display: none !important; }
+        .card-tile:hover { border-color: var(--accent-blue); }
+
+        .badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; width: fit-content; margin-bottom: 10px; color: white; text-transform: uppercase; }
+        
+        .badge-redcastle { background: var(--redcastle); }
+        .badge-goingaming { background: var(--goingaming); }
+        .badge-retroshark { background: var(--retroshark); }
+        .badge-default { background: var(--border-color); }
+
+        .card-name { font-weight: bold; color: #fff; margin-bottom: 4px; }
+        .price { font-size: 20px; font-weight: bold; color: var(--accent-green); margin-top: auto; }
+        .store-link { color: var(--accent-blue); text-decoration: none; font-size: 12px; margin-top: 12px; font-weight: 600; }
+        .store-link:hover { text-decoration: underline; }
+
+        #scrollToTop {
+            position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px;
+            border-radius: 50%; background: var(--accent-blue); color: white;
+            border: none; cursor: pointer; font-size: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s;
+        }
+        #scrollToTop.show { opacity: 1; visibility: visible; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>LGS Singles Search</h1>
+    <textarea id="cardInput" placeholder="Enter card names (one per line)..."></textarea>
+    
+    <div class="controls">
+        <button id="searchBtn" class="btn-search" onclick="startSearch()">Search</button>
+        <button class="btn-clear" onclick="clearResults()">Clear</button>
+        
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+            <label for="sortOrder" style="font-size: 14px; color: var(--text-dim);">Sort By:</label>
+            <select id="sortOrder" onchange="sortAllGrids()">
+                <option value="alpha">Alphabetical (A-Z)</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+            </select>
+        </div>
+        <div id="status"></div>
+    </div>
+
+    <div class="filter-group">
+        <span class="filter-label">Show Stores:</span>
+        <label class="checkbox-wrapper">
+            <input type="checkbox" checked onchange="toggleStoreFilter('redcastle', this.checked)"> Red Castle
+        </label>
+        <label class="checkbox-wrapper">
+            <input type="checkbox" checked onchange="toggleStoreFilter('goingaming', this.checked)"> GoinGaming
+        </label>
+        <label class="checkbox-wrapper">
+            <input type="checkbox" checked onchange="toggleStoreFilter('retroshark', this.checked)"> Retro Shark
+        </label>
+    </div>
+
+    <div id="output"></div>
+</div>
+
+<button id="scrollToTop" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑</button>
+
+<script>
+    let isSearching = false;
+    const allowedStores = new Set(['redcastle', 'goingaming', 'retroshark']);
+
+    window.onscroll = function() {
+        const topBtn = document.getElementById("scrollToTop");
+        if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+            topBtn.classList.add("show");
+        } else {
+            topBtn.classList.remove("show");
+        }
+    };
+
+    function toggleStoreFilter(storeKey, isChecked) {
+        if (isChecked) {
+            allowedStores.add(storeKey);
+        } else {
+            allowedStores.delete(storeKey);
+        }
+        applyFilters();
+    }
+
+    function applyFilters() {
+        document.querySelectorAll('.card-tile').forEach(tile => {
+            const vendorClean = tile.dataset.vendorClean;
+            const isAllowed = Array.from(allowedStores).some(key => vendorClean.includes(key));
+            tile.classList.toggle('hidden-by-filter', !isAllowed);
+        });
+    }
+
+    function clearResults() {
+        if (isSearching) return;
+        document.getElementById('output').innerHTML = "";
+        document.getElementById('status').innerHTML = "";
+    }
+
+    async function startSearch() {
+        if (isSearching) return;
+        const input = document.getElementById('cardInput').value;
+        
+        // Split by line, strip leading numbers/whitespace, and filter empty results
+        const cards = input.split('\n')
+            .map(line => line.replace(/^\s*\d*\s*/, "").trim())
+            .filter(c => c !== "");
+
+        if (cards.length === 0) return;
+
+        clearResults();
+        isSearching = true;
+        const searchBtn = document.getElementById('searchBtn');
+        const statusDiv = document.getElementById('status');
+        searchBtn.disabled = true;
+        statusDiv.innerHTML = '<span class="spinner"></span> Searching...';
+
+        cards.forEach(term => createGroup(term));
+
+        try {
+            const response = await fetch('/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cards })
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let partial = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = (partial + chunk).split('\n\n');
+                partial = lines.pop();
+
+                lines.forEach(line => {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const envelope = JSON.parse(line.replace('data: ', ''));
+                            envelope.results.forEach(item => renderTile(envelope.keyword, item));
+                        } catch (e) { console.error("Parse Error", e); }
+                    }
+                });
+            }
+            statusDiv.innerHTML = '<span class="checkmark">✔</span> Done';
+        } catch (err) {
+            statusDiv.innerHTML = "Error connecting to backend";
+        } finally {
+            isSearching = false;
+            searchBtn.disabled = false;
+        }
+    }
+
+    function createGroup(term) {
+        const output = document.getElementById('output');
+        const safeId = `term-${btoa(term).replace(/[^a-zA-Z0-9]/g, '')}`;
+        if (!document.getElementById(safeId)) {
+            const group = document.createElement('div');
+            group.id = safeId;
+            group.className = 'search-term-group';
+            group.innerHTML = `<div class="term-header">${term}</div><div class="results-grid"></div>`;
+            output.appendChild(group);
+        }
+    }
+
+    function renderTile(term, item) {
+        const safeId = `term-${btoa(term).replace(/[^a-zA-Z0-9]/g, '')}`;
+        const groupEl = document.getElementById(safeId);
+        if (!groupEl) return;
+        const grid = groupEl.querySelector('.results-grid');
+
+        const vendorClean = item.vendor.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const tile = document.createElement('div');
+        tile.className = 'card-tile';
+        tile.dataset.price = item.price;
+        tile.dataset.name = item.name.toLowerCase();
+        tile.dataset.vendorClean = vendorClean;
+
+        const isAllowed = Array.from(allowedStores).some(key => vendorClean.includes(key));
+        if (!isAllowed) tile.classList.add('hidden-by-filter');
+
+        let badgeClass = 'badge-default';
+        if (vendorClean.includes('redcastle')) badgeClass = 'badge-redcastle';
+        else if (vendorClean.includes('goingaming')) badgeClass = 'badge-goingaming';
+        else if (vendorClean.includes('retroshark')) badgeClass = 'badge-retroshark';
+
+        tile.innerHTML = `
+            <div class="badge ${badgeClass}">${item.vendor}</div>
+            <div class="card-name">${item.name}</div>
+            <div style="font-size:12px; color:var(--text-dim)">${item.setName}</div>
+            <div style="font-size:13px; margin: 8px 0;">
+                ${item.conditionName} ${item.isFoil ? '<span style="color: #ffd700; font-weight: bold;">★</span>' : ''}
+            </div>
+            <div class="price">$${parseFloat(item.price).toFixed(2)}</div>
+            <a href="${item.storeUrl}" class="store-link" target="_blank">View Store →</a>
+        `;
+        grid.appendChild(tile);
+        sortGrid(grid); 
+    }
+
+    function sortAllGrids() {
+        document.querySelectorAll('.results-grid').forEach(grid => sortGrid(grid));
+    }
+
+    function sortGrid(grid) {
+        const mode = document.getElementById('sortOrder').value;
+        const tiles = Array.from(grid.children);
+        
+        tiles.sort((a, b) => {
+            if (mode === 'alpha') return a.dataset.name.localeCompare(b.dataset.name);
+            if (mode === 'price-asc') return parseFloat(a.dataset.price) - parseFloat(b.dataset.price);
+            if (mode === 'price-desc') return parseFloat(b.dataset.price) - parseFloat(a.dataset.price);
+            return 0;
+        });
+        
+        tiles.forEach(tile => grid.appendChild(tile));
+    }
+</script>
+</body>
+</html>
