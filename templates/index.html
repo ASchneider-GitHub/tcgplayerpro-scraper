@@ -73,6 +73,19 @@
         .store-link { color: var(--accent-blue); text-decoration: none; font-size: 12px; margin-top: 12px; font-weight: 600; }
         .store-link:hover { text-decoration: underline; }
 
+        .tile-link {
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+        }
+
+        .card-tile:hover .store-link {
+            text-decoration: underline;
+        }
+
         #scrollToTop {
             position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px;
             border-radius: 50%; background: var(--accent-blue); color: white;
@@ -172,21 +185,21 @@
         if (isSearching) return;
         const input = document.getElementById('cardInput').value;
         
-        // Split by line, strip quantities/whitespace, and filter empty results
         const originalLines = input.split('\n')
             .map(line => line.replace(/^\s*\d*\s*[xX]?\s*/, "").trim())
             .filter(c => c !== "");
 
         if (originalLines.length === 0) return;
 
-        clearResults();
+        document.getElementById('output').innerHTML = "";
+        document.getElementById('status').innerHTML = "";
+
         isSearching = true;
         const searchBtn = document.getElementById('searchBtn');
         const statusDiv = document.getElementById('status');
         searchBtn.disabled = true;
         statusDiv.innerHTML = '<span class="spinner"></span> Searching...';
 
-        // Pre-create groups based on exactly what the user typed
         originalLines.forEach(term => createGroup(term));
 
         try {
@@ -199,7 +212,7 @@
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let partial = '';
-            let lineIndex = 0; // Keep track of which search term we are currently receiving
+            let lineIndex = 0;
 
             while (true) {
                 const { value, done } = await reader.read();
@@ -213,14 +226,8 @@
                     if (line.startsWith('data: ')) {
                         try {
                             const results = JSON.parse(line.replace('data: ', ''));
-                            
                             if (results.length > 0) {
-                                // Match results to the specific header by looking at the result name
-                                // or falling back to the sequential line index if necessary.
                                 results.forEach(item => {
-                                    // Logic: Find the header that most closely matches the result card name
-                                    // If a fuzzy match is too complex, we find the first header that 
-                                    // contains a piece of the search term.
                                     const matchedHeader = originalLines.find(header => 
                                         item.name.toLowerCase().includes(header.toLowerCase()) || 
                                         header.toLowerCase().includes(item.name.toLowerCase())
@@ -263,7 +270,6 @@
         const grid = groupEl.querySelector('.results-grid');
         const vendorClean = item.vendor.toLowerCase();
 
-        // Prevent duplicate tiles for the same exact product ID under one header
         const existing = grid.querySelector(`[data-product-id="${item.productId}"]`);
         if (existing) return;
 
@@ -283,14 +289,16 @@
         else if (vendorClean.includes('retroshark')) badgeClass = 'badge-retroshark';
 
         tile.innerHTML = `
-            <div class="badge ${badgeClass}">${item.vendor}</div>
-            <div class="card-name">${item.name}</div>
-            <div style="font-size:12px; color:var(--text-dim)">${item.setName}</div>
-            <div style="font-size:13px; margin: 8px 0;">
-                ${item.conditionName} ${item.isFoil ? '<span style="color: #ffd700; font-weight: bold;">★</span>' : ''}
-            </div>
-            <div class="price">$${parseFloat(item.price).toFixed(2)}</div>
-            <a href="${item.storeUrl}" class="store-link" target="_blank">View Store →</a>
+            <a href="${item.storeUrl}" class="tile-link" target="_blank">
+                <div class="badge ${badgeClass}">${item.vendor}</div>
+                <div class="card-name">${item.name}</div>
+                <div style="font-size:12px; color:var(--text-dim)">${item.setName}</div>
+                <div style="font-size:13px; margin: 8px 0;">
+                    ${item.conditionName} ${item.isFoil ? '<span style="color: #ffd700; font-weight: bold;">★</span>' : ''}
+                </div>
+                <div class="price">$${parseFloat(item.price).toFixed(2)}</div>
+                <div class="store-link">View Store →</div>
+            </a>
         `;
         grid.appendChild(tile);
         sortGrid(grid); 
