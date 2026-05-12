@@ -150,13 +150,13 @@
     <div class="filter-group">
         <span class="filter-label">Show Stores:</span>
         <label class="checkbox-wrapper">
-            <input type="checkbox" checked onchange="toggleStoreFilter('redcastle', this.checked)"> Red Castle
+            <input type="checkbox" checked onchange="toggleStoreFilter('redcastle', this.checked)"> Red Castle <span id="count-redcastle">(0)</span>
         </label>
         <label class="checkbox-wrapper">
-            <input type="checkbox" checked onchange="toggleStoreFilter('goingaming', this.checked)"> GoinGaming
+            <input type="checkbox" checked onchange="toggleStoreFilter('goingaming', this.checked)"> GoinGaming <span id="count-goingaming">(0)</span>
         </label>
         <label class="checkbox-wrapper">
-            <input type="checkbox" checked onchange="toggleStoreFilter('retroshark', this.checked)"> Retro Shark
+            <input type="checkbox" checked onchange="toggleStoreFilter('retroshark', this.checked)"> Retro Shark <span id="count-retroshark">(0)</span>
         </label>
     </div>
 
@@ -200,6 +200,8 @@
         document.getElementById('output').innerHTML = "";
         document.getElementById('status').innerHTML = "";
         document.getElementById('cardInput').value = "";
+        storeCounts = { redcastle: 0, goingaming: 0, retroshark: 0 };
+        updateStoreUI();
     }
 
     async function startSearch() {
@@ -214,6 +216,9 @@
 
         document.getElementById('output').innerHTML = "";
         document.getElementById('status').innerHTML = "";
+
+        storeCounts = { redcastle: 0, goingaming: 0, retroshark: 0 };
+        updateStoreUI();
 
         isSearching = true;
         const searchBtn = document.getElementById('searchBtn');
@@ -271,6 +276,14 @@
         }
     }
 
+    let storeCounts = { redcastle: 0, goingaming: 0, retroshark: 0 };
+
+    function updateStoreUI() {
+        document.getElementById('count-redcastle').textContent = `(${storeCounts.redcastle})`;
+        document.getElementById('count-goingaming').textContent = `(${storeCounts.goingaming})`;
+        document.getElementById('count-retroshark').textContent = `(${storeCounts.retroshark})`;
+    }
+
     function createGroup(term) {
         const output = document.getElementById('output');
         const safeId = `term-${btoa(term).replace(/[^a-zA-Z0-9]/g, '')}`;
@@ -293,6 +306,11 @@
 
         const existing = grid.querySelector(`[data-product-id="${item.productId}"]`);
         if (existing) return;
+
+        if (vendorClean.includes('redcastle')) storeCounts.redcastle++;
+        else if (vendorClean.includes('goingaming')) storeCounts.goingaming++;
+        else if (vendorClean.includes('retroshark')) storeCounts.retroshark++;
+        updateStoreUI();
 
         const tile = document.createElement('div');
         tile.className = 'card-tile';
