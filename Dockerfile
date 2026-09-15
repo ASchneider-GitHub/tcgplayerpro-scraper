@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     jq \
     vim \
     bash \
+    util-linux \
     && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory inside the container

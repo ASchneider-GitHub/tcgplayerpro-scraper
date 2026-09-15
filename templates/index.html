@@ -19,22 +19,24 @@
             --goingaming: #23a559;
         }
 
-        body { background-color: var(--bg-dark); color: var(--text-main); font-family: sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        body { background-color: var(--bg-dark); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 24px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 1500px; }
+
+        textarea { width: 100%; height: 150px; background: var(--surface-dark); color: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; font-family: monospace; box-sizing: border-box; resize: vertical; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+        textarea:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(88,101,242,0.15); }
         
-        textarea { width: 100%; height: 150px; background: var(--surface-dark); color: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; font-family: monospace; box-sizing: border-box; resize: vertical; outline: none; }
-        textarea:focus { border-color: var(--accent-blue); }
-        
-        .controls { display: flex; align-items: center; gap: 15px; margin: 20px 0; flex-wrap: wrap; }
-        
-        .filter-group { display: flex; align-items: center; gap: 15px; background: var(--surface-dark); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 10px; }
-        .filter-label { font-size: 14px; font-weight: bold; color: var(--text-dim); margin-right: 5px; }
+        .controls { display: flex; align-items: center; gap: 16px; margin: 24px 0; flex-wrap: wrap; }
+
+        .filter-group { display: flex; align-items: center; gap: 16px; background: var(--surface-dark); padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 8px; }
+        .filter-label { font-size: 14px; font-weight: bold; color: var(--text-dim); margin-right: 4px; }
         .checkbox-wrapper { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
         .checkbox-wrapper input { cursor: pointer; accent-color: var(--accent-blue); }
 
-        button { padding: 10px 20px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        button { padding: 10px 20px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.15s ease; }
         .btn-search { background: var(--accent-blue); color: white; }
         .btn-clear { background: transparent; color: var(--text-dim); border: 1px solid var(--border-color); }
+        button:not(:disabled):hover { transform: translateY(-1px); }
+        button:not(:disabled):active { transform: translateY(0); }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
 
         select { background: var(--surface-dark); color: white; border: 1px solid var(--border-color); padding: 8px; border-radius: 6px; outline: none; cursor: pointer; }
@@ -43,11 +45,11 @@
         .checkmark { color: var(--accent-green); font-weight: bold; margin-right: 8px; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .search-term-group { margin-top: 40px; animation: fadeIn 0.3s ease-in; }
-        .term-header { 
-            font-size: 24px; font-weight: bold; border-bottom: 2px solid var(--border-color);
-            padding-bottom: 8px; margin-bottom: 15px; color: var(--accent-blue);
-            text-transform: uppercase;
+        .search-term-group { margin-top: 32px; animation: fadeIn 0.3s ease-in; }
+        .term-header {
+            font-size: 20px; font-weight: 700; border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px; margin-bottom: 16px; color: var(--accent-blue);
+            text-transform: uppercase; letter-spacing: 0.02em;
         }
 
         .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
@@ -55,11 +57,17 @@
         .card-tile {
             background: var(--surface-dark); border: 1px solid var(--border-color);
             border-radius: 8px; padding: 16px; display: flex; flex-direction: column;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, transform 0.15s ease, box-shadow 0.15s ease;
         }
-        
+
         .card-tile.hidden-by-filter { display: none !important; }
-        .card-tile:hover { border-color: var(--accent-blue); }
+        .card-tile:hover { border-color: var(--accent-blue); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
+
+        .empty-state {
+            grid-column: 1 / -1; text-align: center; padding: 24px;
+            color: var(--text-dim); border: 1px dashed var(--border-color);
+            border-radius: 8px; font-size: 14px;
+        }
 
         .badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; width: fit-content; margin-bottom: 10px; color: white; text-transform: uppercase; }
         
@@ -134,7 +142,7 @@
     
     <div class="controls">
         <button id="searchBtn" class="btn-search" onclick="startSearch()">Search</button>
-        <button class="btn-clear" onclick="clearResults()">Clear</button>
+        <button id="resetBtn" class="btn-clear" onclick="stopAndReset()">Clear</button>
         
         <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
             <label for="sortOrder" style="font-size: 14px; color: var(--text-dim);">Sort By:</label>
@@ -167,6 +175,7 @@
 
 <script>
     let isSearching = false;
+    let currentAbortController = null;
     const allowedStores = new Set(['redcastle', 'goingaming', 'retroshark']);
 
     window.onscroll = function() {
@@ -195,8 +204,14 @@
         });
     }
 
-    function clearResults() {
-        if (isSearching) return;
+    function stopAndReset() {
+        if (currentAbortController) {
+            currentAbortController.abort();
+            currentAbortController = null;
+        }
+        isSearching = false;
+        document.getElementById('searchBtn').disabled = false;
+        document.getElementById('resetBtn').textContent = 'Clear';
         document.getElementById('output').innerHTML = "";
         document.getElementById('status').innerHTML = "";
         document.getElementById('cardInput').value = "";
@@ -222,23 +237,27 @@
 
         isSearching = true;
         const searchBtn = document.getElementById('searchBtn');
+        const resetBtn = document.getElementById('resetBtn');
         const statusDiv = document.getElementById('status');
         searchBtn.disabled = true;
+        resetBtn.textContent = 'Stop';
         statusDiv.innerHTML = '<span class="spinner"></span> Searching...';
 
         originalLines.forEach(term => createGroup(term));
+
+        currentAbortController = new AbortController();
 
         try {
             const response = await fetch('/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cards: originalLines })
+                body: JSON.stringify({ cards: originalLines }),
+                signal: currentAbortController.signal
             });
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let partial = '';
-            let lineIndex = 0;
 
             while (true) {
                 const { value, done } = await reader.read();
@@ -251,28 +270,27 @@
                 lines.forEach(line => {
                     if (line.startsWith('data: ')) {
                         try {
-                            const results = JSON.parse(line.replace('data: ', ''));
-                            if (results.length > 0) {
-                                results.forEach(item => {
-                                    const matchedHeader = originalLines.find(header => 
-                                        item.name.toLowerCase().includes(header.toLowerCase()) || 
-                                        header.toLowerCase().includes(item.name.toLowerCase())
-                                    ) || originalLines[lineIndex];
-
-                                    renderTile(matchedHeader, item);
-                                });
+                            const payload = JSON.parse(line.slice(6));
+                            if (Array.isArray(payload)) {
+                                payload.forEach(item => renderTile(item.query, item));
+                            } else if (payload.type === 'card_done') {
+                                finalizeGroup(payload.query);
                             }
-                            lineIndex++; 
+                            // 'card_start' / 'all_done' are no-ops for now.
                         } catch (e) { console.error("Parse Error", e); }
                     }
                 });
             }
             statusDiv.innerHTML = '<span class="checkmark">✔</span> Done';
         } catch (err) {
-            statusDiv.innerHTML = "Error connecting to backend";
+            if (err.name !== 'AbortError') {
+                statusDiv.innerHTML = "Error connecting to backend";
+            }
         } finally {
             isSearching = false;
+            currentAbortController = null;
             searchBtn.disabled = false;
+            resetBtn.textContent = 'Clear';
         }
     }
 
@@ -293,6 +311,16 @@
             group.className = 'search-term-group';
             group.innerHTML = `<div class="term-header">${term}</div><div class="results-grid"></div>`;
             output.appendChild(group);
+        }
+    }
+
+    function finalizeGroup(query) {
+        const safeId = `term-${btoa(query).replace(/[^a-zA-Z0-9]/g, '')}`;
+        const groupEl = document.getElementById(safeId);
+        if (!groupEl) return;
+        const grid = groupEl.querySelector('.results-grid');
+        if (grid.children.length === 0) {
+            grid.innerHTML = '<div class="empty-state">No listings found</div>';
         }
     }
 
