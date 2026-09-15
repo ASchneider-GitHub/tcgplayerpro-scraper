@@ -1,6 +1,7 @@
 import os
 import json
 import queue
+import re
 import signal
 import subprocess
 import threading
@@ -40,16 +41,34 @@ def index():
     return render_template('index.html')
 
 
-def _drain_stderr(card, stderr):
+# Matches the two genuine-failure lines invScrape.sh logs (curl failing, or
+# a non-JSON/unexpected response body, e.g. a Cloudflare block page). The
+# "catalog_items=0" stats line invScrape.sh also logs is a legitimate empty
+# result, not an error, and intentionally doesn't match this.
+_VENDOR_ERROR_RE = re.compile(r'^\[(?P<vendor>[\w.-]+)\] (?P<msg>curl failed on .*|unexpected .* response.*)$')
+
+
+def _drain_stderr(card, stderr, q):
     # invScrape.sh's curl/jq calls fail silently on their own (no error
     # checking in the script), so any stderr output here is the only trace
     # of a vendor request going wrong (blocked, rate-limited, malformed
     # response, etc). Logged so it shows up in `docker logs` instead of just
-    # vanishing as a missing result with no explanation.
+    # vanishing as a missing result with no explanation. Genuine failures are
+    # also pushed to the SSE stream so the UI can distinguish "vendor errored"
+    # from "vendor had no matches".
     for line in stderr:
         line = line.strip()
-        if line:
-            scrape_log.warning(f"[{card}] stderr: {line}")
+        if not line:
+            continue
+        scrape_log.warning(f"[{card}] stderr: {line}")
+        m = _VENDOR_ERROR_RE.match(line)
+        if m:
+            q.put({
+                "type": "vendor_error",
+                "query": card,
+                "vendor": m.group("vendor").split(".")[0],
+                "message": m.group("msg"),
+            })
 
 
 def run_one_card(card, q, active_procs, active_procs_lock, cancel_event):
@@ -68,7 +87,7 @@ def run_one_card(card, q, active_procs, active_procs_lock, cancel_event):
     with active_procs_lock:
         active_procs[key] = proc
 
-    stderr_thread = threading.Thread(target=_drain_stderr, args=(card, proc.stderr), daemon=True)
+    stderr_thread = threading.Thread(target=_drain_stderr, args=(card, proc.stderr, q), daemon=True)
     stderr_thread.start()
 
     count = 0
