@@ -12,6 +12,14 @@ process_vendor() {
   local VENDOR_URL="$STORE.tcgplayerpro.com"
   local T_START T_AFTER_SEARCH T_AFTER_SKUS
 
+  # Test hook: lets the UI's vendor-error handling be exercised on demand
+  # instead of waiting for a real block/outage. Sentinel can't collide with
+  # a real card search.
+  if [ "$CARD_NAME" = "__TEST_VENDOR_ERROR__" ]; then
+    echo "[$VENDOR_URL] curl failed on catalog/search for query '$CARD_NAME' (simulated for testing)" >&2
+    return
+  fi
+
   local PAYLOAD
   PAYLOAD=$(jq -n --arg name "$CARD_NAME" '{
     query: $name,

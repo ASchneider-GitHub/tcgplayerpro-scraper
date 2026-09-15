@@ -300,6 +300,15 @@
             border-radius: 10px; font-size: 13px;
         }
 
+        .term-errors { display: flex; flex-wrap: wrap; gap: 6px; margin: -8px 0 14px; }
+        .term-errors:empty { display: none; }
+        .vendor-error-badge {
+            font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
+            background: rgba(230, 57, 70, 0.12); color: #ff6b74;
+            border: 1px solid rgba(230, 57, 70, 0.35);
+            text-transform: none; letter-spacing: normal; cursor: help;
+        }
+
         #scrollToTop {
             position: fixed; bottom: 30px; right: 30px; width: 46px; height: 46px;
             border-radius: 50%; background: var(--accent-blue); color: white;
@@ -366,9 +375,10 @@
     </div>
 
     <div class="search-panel">
-        <textarea id="cardInput" placeholder="Enter card names, one per line.&#10;Supported formats include:&#10;- Sol Ring&#10;- 1 Sol Ring&#10;- 1x Sol Ring"></textarea>
+        <textarea id="cardInput" autofocus placeholder="Enter card names, one per line.&#10;Supported formats include:&#10;- Sol Ring&#10;- 1 Sol Ring&#10;- 1x Sol Ring"></textarea>
         <div class="action-row">
             <button id="searchBtn" class="btn-search" onclick="startSearch()">Search</button>
+            <button id="copyLinkBtn" type="button" class="btn-clear" onclick="copySearchLink()">Copy Link</button>
             <button id="resetBtn" class="btn-clear" onclick="stopAndReset()">Clear</button>
             <div id="status"></div>
         </div>
@@ -405,7 +415,7 @@
             </select>
         </div>
         <div class="export-row">
-            <span class="export-label">Export</span>
+            <span class="export-label">Export Visible Results</span>
             <button type="button" id="exportTxtBtn" class="btn-export" onclick="exportResults('txt')" disabled>TXT</button>
             <button type="button" id="exportCsvBtn" class="btn-export" onclick="exportResults('csv')" disabled>CSV</button>
             <button type="button" id="exportJsonBtn" class="btn-export" onclick="exportResults('json')" disabled>JSON</button>
@@ -565,6 +575,58 @@
         statusDiv.innerHTML = `<span class="spinner"></span> Searching&hellip; (${cardsDone}/${cardsTotal})`;
     }
 
+    function handleGlobalHotkeys(e) {
+        const mod = e.ctrlKey || e.metaKey;
+        if (!mod) return;
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            startSearch();
+            document.getElementById('cardInput').blur();
+        } else if (e.shiftKey && e.code === 'KeyC') {
+            // Ctrl/Cmd+Shift+C is also the browser's "inspect element" shortcut
+            // in most browsers. preventDefault+stopPropagation here (plus
+            // registering on the capture phase below) stops our own page from
+            // reacting to it as a normal keypress, but a browser-level
+            // shortcut like DevTools lives outside the page and JS can't
+            // reliably override it.
+            e.preventDefault();
+            e.stopPropagation();
+            copySearchLink();
+        }
+    }
+    document.addEventListener('keydown', handleGlobalHotkeys, true);
+
+    function flashButton(btn, label) {
+        const original = btn.textContent;
+        btn.textContent = label;
+        btn.disabled = true;
+        setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1500);
+    }
+
+    function copySearchLink() {
+        const input = document.getElementById('cardInput').value;
+        if (input.trim()) syncSearchToURL(input);
+        const btn = document.getElementById('copyLinkBtn');
+        navigator.clipboard.writeText(location.href)
+            .then(() => flashButton(btn, 'Copied!'))
+            .catch(() => flashButton(btn, 'Copy failed'));
+    }
+
+    function markVendorError(query, vendor, message) {
+        const safeId = `term-${btoa(query).replace(/[^a-zA-Z0-9]/g, '')}`;
+        const groupEl = document.getElementById(safeId);
+        if (!groupEl) return;
+        const errBox = groupEl.querySelector('.term-errors');
+        if (!errBox || errBox.querySelector(`[data-vendor="${vendor}"]`)) return;
+        const badge = document.createElement('span');
+        badge.className = 'vendor-error-badge';
+        badge.dataset.vendor = vendor;
+        badge.title = message;
+        badge.textContent = `⚠ ${vendor} unavailable`;
+        errBox.appendChild(badge);
+    }
+
     async function startSearch() {
         if (isSearching) return;
         const input = document.getElementById('cardInput').value;
@@ -629,6 +691,8 @@
                                 finalizeGroup(payload.query);
                                 cardsDone++;
                                 if (isSearching) updateStatus();
+                            } else if (payload.type === 'vendor_error') {
+                                markVendorError(payload.query, payload.vendor, payload.message);
                             }
                             // 'card_start' / 'all_done' are no-ops for now.
                         } catch (e) { console.error("Parse Error", e); }
@@ -663,7 +727,7 @@
             const group = document.createElement('div');
             group.id = safeId;
             group.className = 'search-term-group';
-            group.innerHTML = `<div class="term-header">${term}</div><div class="results-grid"></div>`;
+            group.innerHTML = `<div class="term-header">${term}</div><div class="term-errors"></div><div class="results-grid"></div>`;
             output.appendChild(group);
         }
     }
