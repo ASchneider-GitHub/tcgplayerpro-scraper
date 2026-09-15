@@ -28,13 +28,14 @@
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
-            padding: 40px 24px 80px;
+            padding: 40px 24px 40px;
             display: flex;
             justify-content: center;
             line-height: 1.4;
+            min-height: 100vh;
         }
 
-        .container { width: 100%; max-width: 1400px; }
+        .container { width: 100%; max-width: 1400px; display: flex; flex-direction: column; }
 
         header.page-header {
             display: flex;
@@ -71,6 +72,27 @@
         }
         .repo-link:hover { color: var(--text-dim); }
 
+        .page-footer { text-align: center; margin-top: auto; padding-top: 56px; }
+
+        .vendor-list {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px 8px;
+            font-size: 12px;
+            color: var(--text-faint);
+            margin-bottom: 20px;
+        }
+        .vendor-list .vendor-label { color: var(--text-dim); font-weight: 600; }
+        .vendor-list .sep { color: var(--text-faint); }
+        .vendor-list a {
+            color: var(--text-faint);
+            text-decoration: none;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            transition: color 0.15s;
+        }
+        .vendor-list a:hover { color: var(--accent-blue-bright); }
+
         .search-panel {
             background: var(--surface-dark);
             border: 1px solid var(--border-color);
@@ -80,7 +102,7 @@
 
         textarea {
             width: 100%;
-            height: 130px;
+            height: 133px;
             background: var(--surface-raised);
             color: var(--text-main);
             border: 1px solid var(--border-color);
@@ -171,8 +193,32 @@
         .store-chip:not(.active) { text-decoration: line-through; }
         .store-chip input { display: none; }
 
+        .merge-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-dim);
+            cursor: pointer;
+            user-select: none;
+        }
+        .merge-toggle input { cursor: pointer; accent-color: var(--accent-blue); width: 14px; height: 14px; }
+        .merge-toggle .merge-hint { color: var(--text-faint); font-size: 11.5px; }
+
         .sort-row { display: flex; align-items: center; gap: 8px; }
         .sort-row label { font-size: 13px; color: var(--text-dim); }
+
+        .export-row { display: flex; align-items: center; gap: 8px; }
+        .export-row .export-label { font-size: 13px; color: var(--text-dim); }
+        .btn-export {
+            padding: 7px 12px;
+            font-size: 12.5px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--surface-dark);
+            color: var(--text-dim);
+        }
+        .btn-export:not(:disabled):hover { border-color: var(--accent-blue); color: var(--text-main); }
 
         select {
             background: var(--surface-dark);
@@ -211,6 +257,7 @@
             transition: border-color 0.2s, transform 0.15s ease, box-shadow 0.15s ease;
         }
         .card-tile.hidden-by-filter { display: none !important; }
+        .card-tile.hidden-by-merge { display: none !important; }
         .card-tile:hover { border-color: var(--accent-blue); transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.35); }
 
         .tile-link { text-decoration: none; color: inherit; display: block; }
@@ -270,9 +317,10 @@
             header.page-header { flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 20px; }
             .repo-link { font-size: 11px; word-break: break-all; }
             .title-block h1 { font-size: 21px; }
+            .vendor-list { font-size: 11px; margin-bottom: 16px; }
 
             .search-panel { padding: 14px; border-radius: 10px; }
-            textarea { height: 110px; font-size: 16px; }
+            textarea { height: 133px; font-size: 16px; }
 
             .action-row { flex-direction: column; align-items: stretch; gap: 10px; }
             .action-row button { width: 100%; padding: 12px 20px; }
@@ -280,8 +328,10 @@
 
             .toolbar { flex-direction: column; align-items: stretch; gap: 12px; margin: 16px 0 4px; }
             .chip-group { justify-content: center; }
+            .merge-toggle { justify-content: center; }
             .sort-row { justify-content: space-between; }
             select { flex: 1; }
+            .export-row { justify-content: center; flex-wrap: wrap; }
 
             .search-term-group { margin-top: 28px; }
             .term-header { font-size: 13px; }
@@ -304,15 +354,19 @@
             <span class="eyebrow">Local Game Store Scraper</span>
             <h1>LGS Singles Search</h1>
         </div>
-        <a href="https://github.com/ASchneider-GitHub/tcgplayerpro-scraper"
-           target="_blank"
-           class="repo-link">
-           github.com/ASchneider-GitHub/tcgplayerpro-scraper
-        </a>
     </header>
 
+    <div class="vendor-list">
+        <span class="vendor-label">Searching:</span>
+        <a href="https://retrosharkgaming.tcgplayerpro.com" target="_blank">retrosharkgaming.tcgplayerpro.com</a>
+        <span class="sep">-</span>
+        <a href="https://redcastle.tcgplayerpro.com" target="_blank">redcastle.tcgplayerpro.com</a>
+        <span class="sep">-</span>
+        <a href="https://goingaming.tcgplayerpro.com" target="_blank">goingaming.tcgplayerpro.com</a>
+    </div>
+
     <div class="search-panel">
-        <textarea id="cardInput" placeholder="Enter card names, one per line&#10;Leading numbers will be ignored to support pasting lists from ManaBox&#10;&#10;Supported formats include:&#10;- Sol Ring&#10;- 1 Sol Ring&#10;- 1x Sol Ring"></textarea>
+        <textarea id="cardInput" placeholder="Enter card names, one per line.&#10;Supported formats include:&#10;- Sol Ring&#10;- 1 Sol Ring&#10;- 1x Sol Ring"></textarea>
         <div class="action-row">
             <button id="searchBtn" class="btn-search" onclick="startSearch()">Search</button>
             <button id="resetBtn" class="btn-clear" onclick="stopAndReset()">Clear</button>
@@ -338,6 +392,10 @@
                 Retro Shark <span id="count-retroshark">(0)</span>
             </label>
         </div>
+        <label class="merge-toggle">
+            <input type="checkbox" id="mergeToggle" checked onchange="toggleMergeResults(this.checked)">
+            Merge Results <span class="merge-hint">(best condition only)</span>
+        </label>
         <div class="sort-row">
             <label for="sortOrder">Sort by</label>
             <select id="sortOrder" onchange="sortAllGrids()">
@@ -346,9 +404,23 @@
                 <option value="price-desc">Price: High to Low</option>
             </select>
         </div>
+        <div class="export-row">
+            <span class="export-label">Export</span>
+            <button type="button" id="exportTxtBtn" class="btn-export" onclick="exportResults('txt')" disabled>TXT</button>
+            <button type="button" id="exportCsvBtn" class="btn-export" onclick="exportResults('csv')" disabled>CSV</button>
+            <button type="button" id="exportJsonBtn" class="btn-export" onclick="exportResults('json')" disabled>JSON</button>
+        </div>
     </div>
 
     <div id="output"></div>
+
+    <footer class="page-footer">
+        <a href="https://github.com/ASchneider-GitHub/tcgplayerpro-scraper"
+           target="_blank"
+           class="repo-link">
+           github.com/ASchneider-GitHub/tcgplayerpro-scraper
+        </a>
+    </footer>
 </div>
 
 <button id="scrollToTop" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑</button>
@@ -357,6 +429,37 @@
     let isSearching = false;
     let currentAbortController = null;
     const allowedStores = new Set(['redcastle', 'goingaming', 'retroshark']);
+    let allResults = [];
+    let mergeResults = true;
+
+    const CONDITION_ORDER = ['Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played', 'Damaged'];
+    function conditionRank(conditionName) {
+        const base = (conditionName || '').replace(/\s*Foil\s*$/i, '').trim();
+        const idx = CONDITION_ORDER.indexOf(base);
+        return idx === -1 ? CONDITION_ORDER.length : idx;
+    }
+
+    function toggleMergeResults(isChecked) {
+        mergeResults = isChecked;
+        document.querySelectorAll('.results-grid').forEach(applyMergeFilterToGrid);
+    }
+
+    function applyMergeFilterToGrid(grid) {
+        const tiles = Array.from(grid.children).filter(t => t.classList.contains('card-tile'));
+        if (!mergeResults) {
+            tiles.forEach(t => t.classList.remove('hidden-by-merge'));
+            return;
+        }
+        const bestByGroup = new Map();
+        tiles.forEach(tile => {
+            const key = `${tile.dataset.vendorClean}|${tile.dataset.productId}|${tile.dataset.isFoil}`;
+            const rank = parseInt(tile.dataset.conditionRank, 10);
+            const current = bestByGroup.get(key);
+            if (!current || rank < current.rank) bestByGroup.set(key, { tile, rank });
+        });
+        const bestTiles = new Set(Array.from(bestByGroup.values()).map(v => v.tile));
+        tiles.forEach(tile => tile.classList.toggle('hidden-by-merge', !bestTiles.has(tile)));
+    }
 
     window.onscroll = function() {
         const topBtn = document.getElementById("scrollToTop");
@@ -398,6 +501,60 @@
         document.getElementById('cardInput').value = "";
         storeCounts = { redcastle: 0, goingaming: 0, retroshark: 0 };
         updateStoreUI();
+        allResults = [];
+        setExportEnabled(false);
+    }
+
+    function setExportEnabled(enabled) {
+        ['exportTxtBtn', 'exportCsvBtn', 'exportJsonBtn'].forEach(id => {
+            document.getElementById(id).disabled = !enabled;
+        });
+    }
+
+    function exportResults(format) {
+        const data = allResults.filter(item => {
+            const vendorClean = item.vendor.toLowerCase();
+            return Array.from(allowedStores).some(key => vendorClean.includes(key));
+        });
+        if (data.length === 0) return;
+
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        let content, mime, filename;
+
+        if (format === 'json') {
+            content = JSON.stringify(data, null, 2);
+            mime = 'application/json';
+            filename = `lgs-search-results-${stamp}.json`;
+        } else if (format === 'csv') {
+            const headers = ['query', 'vendor', 'name', 'setName', 'conditionName', 'languageName', 'isFoil', 'price', 'quantity', 'storeUrl'];
+            const escapeCsv = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+            const rows = [headers.join(',')].concat(
+                data.map(item => headers.map(h => escapeCsv(item[h])).join(','))
+            );
+            content = rows.join('\r\n');
+            mime = 'text/csv';
+            filename = `lgs-search-results-${stamp}.csv`;
+        } else {
+            content = data.map(item =>
+                `${item.name} [${item.setName}]\n` +
+                `  Store: ${item.vendor}\n` +
+                `  Condition: ${item.conditionName}${item.isFoil ? ' (Foil)' : ''}\n` +
+                `  Price: $${parseFloat(item.price).toFixed(2)}  Qty: ${item.quantity}\n` +
+                `  ${item.storeUrl}`
+            ).join('\n\n');
+            mime = 'text/plain';
+            filename = `lgs-search-results-${stamp}.txt`;
+        }
+
+        const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     let cardsTotal = 0;
@@ -423,6 +580,8 @@
 
         storeCounts = { redcastle: 0, goingaming: 0, retroshark: 0 };
         updateStoreUI();
+        allResults = [];
+        setExportEnabled(false);
 
         isSearching = true;
         cardsTotal = originalLines.length;
@@ -536,6 +695,9 @@
         if (grid._seenListings.has(uniqueKey)) return;
         grid._seenListings.add(uniqueKey);
 
+        allResults.push(item);
+        setExportEnabled(true);
+
         if (vendorClean.includes('redcastle')) storeCounts.redcastle++;
         else if (vendorClean.includes('goingaming')) storeCounts.goingaming++;
         else if (vendorClean.includes('retroshark')) storeCounts.retroshark++;
@@ -547,6 +709,8 @@
         tile.dataset.name = item.name.toLowerCase();
         tile.dataset.vendorClean = vendorClean;
         tile.dataset.productId = item.productId;
+        tile.dataset.isFoil = item.isFoil;
+        tile.dataset.conditionRank = conditionRank(item.conditionName);
 
         const isAllowed = Array.from(allowedStores).some(key => vendorClean.includes(key));
         if (!isAllowed) tile.classList.add('hidden-by-filter');
@@ -578,6 +742,7 @@
         `;
         grid.appendChild(tile);
         sortGrid(grid);
+        applyMergeFilterToGrid(grid);
     }
 
     function sortAllGrids() {
