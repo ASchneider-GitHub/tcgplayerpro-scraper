@@ -6,166 +6,346 @@
     <title>LGS Singles Search</title>
     <style>
         :root {
-            --bg-dark: #121416;
-            --surface-dark: #1e2124;
-            --border-color: #36393e;
-            --text-main: #eef1f5;
-            --text-dim: #b9bbbe;
+            --bg-dark: #0e1012;
+            --surface-dark: #1a1d21;
+            --surface-raised: #202327;
+            --border-color: #2c3036;
+            --text-main: #f2f4f7;
+            --text-dim: #9aa0a8;
+            --text-faint: #6b7078;
             --accent-blue: #5865f2;
+            --accent-blue-bright: #6d78ff;
             --accent-green: #23a559;
-            /* Store Colors */
             --retroshark: #2a9d8f;
             --redcastle: #e63946;
             --goingaming: #23a559;
         }
 
-        body { background-color: var(--bg-dark); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 24px; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 1500px; }
+        * { box-sizing: border-box; }
 
-        textarea { width: 100%; height: 150px; background: var(--surface-dark); color: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; font-family: monospace; box-sizing: border-box; resize: vertical; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 40px 24px 80px;
+            display: flex;
+            justify-content: center;
+            line-height: 1.4;
+        }
+
+        .container { width: 100%; max-width: 1400px; }
+
+        header.page-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 28px;
+        }
+
+        .title-block h1 {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .eyebrow {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent-blue-bright);
+            margin-bottom: 6px;
+        }
+
+        .repo-link {
+            color: var(--text-faint);
+            font-size: 13px;
+            text-decoration: none;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            transition: color 0.15s;
+        }
+        .repo-link:hover { color: var(--text-dim); }
+
+        .search-panel {
+            background: var(--surface-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 130px;
+            background: var(--surface-raised);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px 16px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 13.5px;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        textarea::placeholder { color: var(--text-faint); }
         textarea:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(88,101,242,0.15); }
-        
-        .controls { display: flex; align-items: center; gap: 16px; margin: 24px 0; flex-wrap: wrap; }
 
-        .filter-group { display: flex; align-items: center; gap: 16px; background: var(--surface-dark); padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 8px; }
-        .filter-label { font-size: 14px; font-weight: bold; color: var(--text-dim); margin-right: 4px; }
-        .checkbox-wrapper { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
-        .checkbox-wrapper input { cursor: pointer; accent-color: var(--accent-blue); }
+        .action-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
 
-        button { padding: 10px 20px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.15s ease; }
+        button {
+            padding: 10px 22px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.15s ease, background 0.15s ease;
+        }
         .btn-search { background: var(--accent-blue); color: white; }
+        .btn-search:not(:disabled):hover { background: var(--accent-blue-bright); }
         .btn-clear { background: transparent; color: var(--text-dim); border: 1px solid var(--border-color); }
+        .btn-clear:not(:disabled):hover { border-color: var(--text-faint); color: var(--text-main); }
         button:not(:disabled):hover { transform: translateY(-1px); }
         button:not(:disabled):active { transform: translateY(0); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button:disabled { opacity: 0.45; cursor: not-allowed; }
 
-        select { background: var(--surface-dark); color: white; border: 1px solid var(--border-color); padding: 8px; border-radius: 6px; outline: none; cursor: pointer; }
-        
-        .spinner { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
-        .checkmark { color: var(--accent-green); font-weight: bold; margin-right: 8px; }
+        #status {
+            font-size: 13px;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+        }
+
+        .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.12); border-top-color: var(--accent-blue-bright); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
+        .checkmark { color: var(--accent-green); font-weight: bold; margin-right: 6px; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .search-term-group { margin-top: 32px; animation: fadeIn 0.3s ease-in; }
-        .term-header {
-            font-size: 20px; font-weight: 700; border-bottom: 2px solid var(--border-color);
-            padding-bottom: 8px; margin-bottom: 16px; color: var(--accent-blue);
-            text-transform: uppercase; letter-spacing: 0.02em;
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin: 20px 0 8px;
         }
 
-        .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+        .chip-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+        .store-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: var(--surface-dark);
+            color: var(--text-faint);
+            cursor: pointer;
+            user-select: none;
+            opacity: 0.55;
+            filter: grayscale(70%);
+            transition: border-color 0.15s, color 0.15s, background 0.15s, opacity 0.15s, filter 0.15s;
+        }
+        .store-chip:hover { opacity: 0.8; }
+        .store-chip .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .store-chip.active {
+            color: var(--text-main);
+            border-color: var(--dot-color, var(--border-color));
+            background: var(--surface-raised);
+            opacity: 1;
+            filter: none;
+        }
+        .store-chip:not(.active) { text-decoration: line-through; }
+        .store-chip input { display: none; }
+
+        .sort-row { display: flex; align-items: center; gap: 8px; }
+        .sort-row label { font-size: 13px; color: var(--text-dim); }
+
+        select {
+            background: var(--surface-dark);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 7px 10px;
+            border-radius: 6px;
+            outline: none;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .search-term-group { margin-top: 36px; animation: fadeIn 0.3s ease-in; }
+
+        .term-header {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-main);
+        }
+
+        .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
 
         .card-tile {
-            background: var(--surface-dark); border: 1px solid var(--border-color);
-            border-radius: 8px; padding: 16px; display: flex; flex-direction: column;
+            background: var(--surface-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
             transition: border-color 0.2s, transform 0.15s ease, box-shadow 0.15s ease;
         }
-
         .card-tile.hidden-by-filter { display: none !important; }
-        .card-tile:hover { border-color: var(--accent-blue); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
+        .card-tile:hover { border-color: var(--accent-blue); transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.35); }
 
-        .empty-state {
-            grid-column: 1 / -1; text-align: center; padding: 24px;
-            color: var(--text-dim); border: 1px dashed var(--border-color);
-            border-radius: 8px; font-size: 14px;
+        .tile-link { text-decoration: none; color: inherit; display: block; }
+
+        .tile-image-wrap { position: relative; width: 100%; aspect-ratio: 5 / 7; background: var(--bg-dark); }
+        .card-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+        .badge {
+            position: absolute; top: 8px; left: 8px;
+            font-size: 9.5px; font-weight: 700; padding: 3px 7px;
+            border-radius: 4px; color: white; text-transform: uppercase;
+            letter-spacing: 0.03em;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.4);
         }
-
-        .badge { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px; width: fit-content; margin-bottom: 10px; color: white; text-transform: uppercase; }
-        
         .badge-redcastle { background: var(--redcastle); }
         .badge-goingaming { background: var(--goingaming); }
         .badge-retroshark { background: var(--retroshark); }
         .badge-default { background: var(--border-color); }
 
-        .card-name { font-weight: bold; color: #fff; margin-bottom: 4px; }
-        .price { font-size: 20px; font-weight: bold; color: var(--accent-green); margin-top: auto; }
-        .store-link { color: var(--accent-blue); text-decoration: none; font-size: 12px; margin-top: 12px; font-weight: 600; }
-        .store-link:hover { text-decoration: underline; }
+        .foil-star { position: absolute; top: 8px; right: 8px; font-size: 14px; color: #ffd700; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); }
+        .foil-star-inline { color: #ffd700; font-weight: 700; margin-left: 3px; }
 
-        .tile-link {
-            text-decoration: none;
-            color: inherit;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            width: 100%;
+        .tile-body { padding: 12px; }
+        .card-name { font-weight: 600; font-size: 13.5px; color: var(--text-main); margin-bottom: 2px; line-height: 1.25; }
+        .card-set { font-size: 11.5px; color: var(--text-faint); margin-bottom: 8px; }
+
+        .tile-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .condition { font-size: 11.5px; color: var(--text-dim); }
+        .price { font-size: 16px; font-weight: 700; color: var(--accent-green); }
+
+        .store-link {
+            display: block; margin-top: 10px; font-size: 11px; font-weight: 600;
+            color: var(--text-faint); transition: color 0.15s;
         }
+        .card-tile:hover .store-link { color: var(--accent-blue-bright); }
 
-        .card-tile:hover .store-link {
-            text-decoration: underline;
-        }
-
-        .tile-content {
-            display: flex;
-            gap: 12px;
-            height: 100%;
-        }
-
-        .tile-info {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .card-image {
-            width: 100px;
-            height: 140px;
-            object-fit: cover;
-            border-radius: 4px;
-            background: var(--bg-dark);
-            flex-shrink: 0;
+        .empty-state {
+            grid-column: 1 / -1; text-align: center; padding: 22px;
+            color: var(--text-faint); border: 1px dashed var(--border-color);
+            border-radius: 10px; font-size: 13px;
         }
 
         #scrollToTop {
-            position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px;
+            position: fixed; bottom: 30px; right: 30px; width: 46px; height: 46px;
             border-radius: 50%; background: var(--accent-blue); color: white;
-            border: none; cursor: pointer; font-size: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            border: none; cursor: pointer; font-size: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s;
         }
         #scrollToTop.show { opacity: 1; visibility: visible; }
+        #scrollToTop:hover { background: var(--accent-blue-bright); }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 640px) {
+            body { padding: 20px 12px 72px; }
+
+            header.page-header { flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 20px; }
+            .repo-link { font-size: 11px; word-break: break-all; }
+            .title-block h1 { font-size: 21px; }
+
+            .search-panel { padding: 14px; border-radius: 10px; }
+            textarea { height: 110px; font-size: 16px; }
+
+            .action-row { flex-direction: column; align-items: stretch; gap: 10px; }
+            .action-row button { width: 100%; padding: 12px 20px; }
+            #status { justify-content: center; }
+
+            .toolbar { flex-direction: column; align-items: stretch; gap: 12px; margin: 16px 0 4px; }
+            .chip-group { justify-content: center; }
+            .sort-row { justify-content: space-between; }
+            select { flex: 1; }
+
+            .search-term-group { margin-top: 28px; }
+            .term-header { font-size: 13px; }
+
+            .results-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+            .tile-body { padding: 9px; }
+            .card-name { font-size: 12px; }
+            .card-set { font-size: 10.5px; }
+            .price { font-size: 14px; }
+
+            #scrollToTop { bottom: 16px; right: 16px; width: 42px; height: 42px; font-size: 16px; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 style="margin-bottom: 0;">LGS Singles Search</h1>
-    <div style="margin-bottom: 20px;">
-        <a href="https://github.com/ASchneider-GitHub/tcgplayerpro-scraper" 
-           target="_blank" 
-           style="color: #7289da; font-size: 14px; text-decoration: none; font-family: monospace;">
-           [Application GitHub Repository]
+    <header class="page-header">
+        <div class="title-block">
+            <span class="eyebrow">Local Game Store Scraper</span>
+            <h1>LGS Singles Search</h1>
+        </div>
+        <a href="https://github.com/ASchneider-GitHub/tcgplayerpro-scraper"
+           target="_blank"
+           class="repo-link">
+           github.com/ASchneider-GitHub/tcgplayerpro-scraper
         </a>
+    </header>
+
+    <div class="search-panel">
+        <textarea id="cardInput" placeholder="Enter card names, one per line&#10;Leading numbers will be ignored to support pasting lists from ManaBox&#10;&#10;Supported formats include:&#10;- Sol Ring&#10;- 1 Sol Ring&#10;- 1x Sol Ring"></textarea>
+        <div class="action-row">
+            <button id="searchBtn" class="btn-search" onclick="startSearch()">Search</button>
+            <button id="resetBtn" class="btn-clear" onclick="stopAndReset()">Clear</button>
+            <div id="status"></div>
+        </div>
     </div>
-    
-    <textarea id="cardInput" placeholder="Enter card names, one per line&#10;Leading numbers will be ignored to support pasting lists from ManaBox&#10;&#10;Supported formats include:&#10;- Sol Ring&#10;- 1 Sol Ring&#10;- 1x Sol Ring"></textarea>
-    
-    <div class="controls">
-        <button id="searchBtn" class="btn-search" onclick="startSearch()">Search</button>
-        <button id="resetBtn" class="btn-clear" onclick="stopAndReset()">Clear</button>
-        
-        <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
-            <label for="sortOrder" style="font-size: 14px; color: var(--text-dim);">Sort By:</label>
+
+    <div class="toolbar">
+        <div class="chip-group" id="storeFilters">
+            <label class="store-chip active" style="--dot-color: var(--redcastle)" data-store="redcastle">
+                <input type="checkbox" checked onchange="toggleStoreFilter('redcastle', this.checked, this.closest('.store-chip'))">
+                <span class="dot" style="background: var(--redcastle)"></span>
+                Red Castle <span id="count-redcastle">(0)</span>
+            </label>
+            <label class="store-chip active" style="--dot-color: var(--goingaming)" data-store="goingaming">
+                <input type="checkbox" checked onchange="toggleStoreFilter('goingaming', this.checked, this.closest('.store-chip'))">
+                <span class="dot" style="background: var(--goingaming)"></span>
+                GoinGaming <span id="count-goingaming">(0)</span>
+            </label>
+            <label class="store-chip active" style="--dot-color: var(--retroshark)" data-store="retroshark">
+                <input type="checkbox" checked onchange="toggleStoreFilter('retroshark', this.checked, this.closest('.store-chip'))">
+                <span class="dot" style="background: var(--retroshark)"></span>
+                Retro Shark <span id="count-retroshark">(0)</span>
+            </label>
+        </div>
+        <div class="sort-row">
+            <label for="sortOrder">Sort by</label>
             <select id="sortOrder" onchange="sortAllGrids()">
                 <option value="alpha">Alphabetical (A-Z)</option>
                 <option value="price-asc">Price: Low to High</option>
                 <option value="price-desc">Price: High to Low</option>
             </select>
         </div>
-        <div id="status"></div>
-    </div>
-
-    <div class="filter-group">
-        <span class="filter-label">Show Stores:</span>
-        <label class="checkbox-wrapper">
-            <input type="checkbox" checked onchange="toggleStoreFilter('redcastle', this.checked)"> Red Castle <span id="count-redcastle">(0)</span>
-        </label>
-        <label class="checkbox-wrapper">
-            <input type="checkbox" checked onchange="toggleStoreFilter('goingaming', this.checked)"> GoinGaming <span id="count-goingaming">(0)</span>
-        </label>
-        <label class="checkbox-wrapper">
-            <input type="checkbox" checked onchange="toggleStoreFilter('retroshark', this.checked)"> Retro Shark <span id="count-retroshark">(0)</span>
-        </label>
     </div>
 
     <div id="output"></div>
@@ -187,12 +367,13 @@
         }
     };
 
-    function toggleStoreFilter(storeKey, isChecked) {
+    function toggleStoreFilter(storeKey, isChecked, labelEl) {
         if (isChecked) {
             allowedStores.add(storeKey);
         } else {
             allowedStores.delete(storeKey);
         }
+        if (labelEl) labelEl.classList.toggle('active', isChecked);
         applyFilters();
     }
 
@@ -219,10 +400,18 @@
         updateStoreUI();
     }
 
+    let cardsTotal = 0;
+    let cardsDone = 0;
+
+    function updateStatus() {
+        const statusDiv = document.getElementById('status');
+        statusDiv.innerHTML = `<span class="spinner"></span> Searching&hellip; (${cardsDone}/${cardsTotal})`;
+    }
+
     async function startSearch() {
         if (isSearching) return;
         const input = document.getElementById('cardInput').value;
-        
+
         const originalLines = input.split('\n')
             .map(line => line.replace(/^\s*\d*\s*[xX]?\s*/, "").trim())
             .filter(c => c !== "");
@@ -236,12 +425,14 @@
         updateStoreUI();
 
         isSearching = true;
+        cardsTotal = originalLines.length;
+        cardsDone = 0;
         const searchBtn = document.getElementById('searchBtn');
         const resetBtn = document.getElementById('resetBtn');
         const statusDiv = document.getElementById('status');
         searchBtn.disabled = true;
         resetBtn.textContent = 'Stop';
-        statusDiv.innerHTML = '<span class="spinner"></span> Searching...';
+        updateStatus();
 
         originalLines.forEach(term => createGroup(term));
 
@@ -275,13 +466,15 @@
                                 payload.forEach(item => renderTile(item.query, item));
                             } else if (payload.type === 'card_done') {
                                 finalizeGroup(payload.query);
+                                cardsDone++;
+                                if (isSearching) updateStatus();
                             }
                             // 'card_start' / 'all_done' are no-ops for now.
                         } catch (e) { console.error("Parse Error", e); }
                     }
                 });
             }
-            statusDiv.innerHTML = '<span class="checkmark">✔</span> Done';
+            statusDiv.innerHTML = '<span class="checkmark">&#10003;</span> Done';
         } catch (err) {
             if (err.name !== 'AbortError') {
                 statusDiv.innerHTML = "Error connecting to backend";
@@ -328,12 +521,20 @@
         const safeId = `term-${btoa(headerTerm).replace(/[^a-zA-Z0-9]/g, '')}`;
         const groupEl = document.getElementById(safeId);
         if (!groupEl) return;
-        
+
         const grid = groupEl.querySelector('.results-grid');
         const vendorClean = item.vendor.toLowerCase();
 
-        const existing = grid.querySelector(`[data-product-id="${item.productId}"]`);
-        if (existing) return;
+        // productId alone isn't a unique key: sibling TCGplayerPro stores
+        // share the same underlying catalog, so the same productId can (and
+        // does) show up across multiple vendors, and a single vendor can list
+        // the same productId more than once (different condition/foil SKUs).
+        // Dedup on the full listing identity instead, or distinct store
+        // listings silently disappear whenever a productId collides.
+        const uniqueKey = `${vendorClean}|${item.productId}|${item.conditionName}|${item.isFoil}`;
+        if (!grid._seenListings) grid._seenListings = new Set();
+        if (grid._seenListings.has(uniqueKey)) return;
+        grid._seenListings.add(uniqueKey);
 
         if (vendorClean.includes('redcastle')) storeCounts.redcastle++;
         else if (vendorClean.includes('goingaming')) storeCounts.goingaming++;
@@ -359,23 +560,24 @@
 
         tile.innerHTML = `
             <a href="${item.storeUrl}" class="tile-link" target="_blank">
-                <div class="tile-content">
-                    <div class="tile-info">
-                        <div class="badge ${badgeClass}">${item.vendor}</div>
-                        <div class="card-name">${item.name}</div>
-                        <div style="font-size:12px; color:var(--text-dim)">${item.setName}</div>
-                        <div style="font-size:13px; margin: 8px 0;">
-                            ${item.conditionName} ${item.isFoil ? '<span style="color: #ffd700; font-weight: bold;">★</span>' : ''}
-                        </div>
-                        <div class="price">$${parseFloat(item.price).toFixed(2)}</div>
-                        <div class="store-link">View Store →</div>
-                    </div>
+                <div class="tile-image-wrap">
                     <img class="card-image" src="${imageUrl}" alt="${item.name}" loading="lazy">
+                    <div class="badge ${badgeClass}">${item.vendor}</div>
+                    ${item.isFoil ? '<span class="foil-star">★</span>' : ''}
+                </div>
+                <div class="tile-body">
+                    <div class="card-name">${item.name}</div>
+                    <div class="card-set">${item.setName}</div>
+                    <div class="tile-meta">
+                        <span class="condition">${item.conditionName}${item.isFoil ? ' <span class="foil-star-inline">★</span>' : ''}</span>
+                        <span class="price">$${parseFloat(item.price).toFixed(2)}</span>
+                    </div>
+                    <span class="store-link">View Store &rarr;</span>
                 </div>
             </a>
         `;
         grid.appendChild(tile);
-        sortGrid(grid); 
+        sortGrid(grid);
     }
 
     function sortAllGrids() {
@@ -385,14 +587,14 @@
     function sortGrid(grid) {
         const mode = document.getElementById('sortOrder').value;
         const tiles = Array.from(grid.children);
-        
+
         tiles.sort((a, b) => {
             if (mode === 'alpha') return a.dataset.name.localeCompare(b.dataset.name);
             if (mode === 'price-asc') return parseFloat(a.dataset.price) - parseFloat(b.dataset.price);
             if (mode === 'price-desc') return parseFloat(b.dataset.price) - parseFloat(a.dataset.price);
             return 0;
         });
-        
+
         tiles.forEach(tile => grid.appendChild(tile));
     }
 </script>

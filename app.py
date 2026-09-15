@@ -12,6 +12,9 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+scrape_log = logging.getLogger('scrape')
+
 # Keep your original health check silence logging
 log = logging.getLogger('werkzeug')
 class HealthCheckFilter(logging.Filter):
@@ -37,6 +40,18 @@ def index():
     return render_template('index.html')
 
 
+def _drain_stderr(card, stderr):
+    # invScrape.sh's curl/jq calls fail silently on their own (no error
+    # checking in the script), so any stderr output here is the only trace
+    # of a vendor request going wrong (blocked, rate-limited, malformed
+    # response, etc). Logged so it shows up in `docker logs` instead of just
+    # vanishing as a missing result with no explanation.
+    for line in stderr:
+        line = line.strip()
+        if line:
+            scrape_log.warning(f"[{card}] stderr: {line}")
+
+
 def run_one_card(card, q, active_procs, active_procs_lock, cancel_event):
     if cancel_event.is_set():
         return
@@ -44,7 +59,7 @@ def run_one_card(card, q, active_procs, active_procs_lock, cancel_event):
     proc = subprocess.Popen(
         ['bash', 'invScrape.sh', card],
         stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
         text=True,
         bufsize=1,
         preexec_fn=os.setsid,
@@ -52,6 +67,9 @@ def run_one_card(card, q, active_procs, active_procs_lock, cancel_event):
     key = object()
     with active_procs_lock:
         active_procs[key] = proc
+
+    stderr_thread = threading.Thread(target=_drain_stderr, args=(card, proc.stderr), daemon=True)
+    stderr_thread.start()
 
     count = 0
     try:
@@ -68,6 +86,7 @@ def run_one_card(card, q, active_procs, active_procs_lock, cancel_event):
     finally:
         with active_procs_lock:
             active_procs.pop(key, None)
+        stderr_thread.join(timeout=2)
         q.put({"type": "card_done", "query": card, "count": count})
 
 
