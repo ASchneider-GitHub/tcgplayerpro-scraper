@@ -570,10 +570,12 @@
         const input = document.getElementById('cardInput').value;
 
         const originalLines = input.split('\n')
-            .map(line => line.replace(/^\s*\d*\s*[xX]?\s*/, "").trim())
+            .map(line => line.replace(/^\s*(?:\d+[xX]?\s*)?/, "").trim())
             .filter(c => c !== "");
 
         if (originalLines.length === 0) return;
+
+        syncSearchToURL(input);
 
         document.getElementById('output').innerHTML = "";
         document.getElementById('status').innerHTML = "";
@@ -762,6 +764,20 @@
 
         tiles.forEach(tile => grid.appendChild(tile));
     }
+
+    function syncSearchToURL(text) {
+        const params = new URLSearchParams(location.search);
+        params.set('q', text);
+        history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
+    }
+
+    (function loadSearchFromURL() {
+        const q = new URLSearchParams(location.search).get('q');
+        if (q) {
+            document.getElementById('cardInput').value = q;
+            startSearch();
+        }
+    })();
 </script>
 </body>
 </html>
