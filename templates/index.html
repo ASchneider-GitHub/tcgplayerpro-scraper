@@ -335,6 +335,17 @@
         #scrollToTop.show { opacity: 1; visibility: visible; }
         #scrollToTop:hover { background: var(--accent-blue-bright); }
 
+        .side-link {
+            position: fixed; top: 16px; right: 16px; z-index: 1000;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 14px; border-radius: 999px;
+            background: var(--surface-raised); border: 1px solid var(--border-color);
+            color: var(--text-dim); font-size: 13px; text-decoration: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4); transition: all 0.2s;
+        }
+        .side-link strong { color: var(--text-main); font-weight: 600; }
+        .side-link:hover { border-color: var(--accent-blue); color: var(--text-main); }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         @media (max-width: 640px) {
@@ -368,11 +379,14 @@
             .card-set { font-size: 10.5px; }
             .price { font-size: 14px; }
 
+            .side-link { position: static; display: flex; justify-content: center; margin-bottom: 16px; font-size: 12px; }
             #scrollToTop { bottom: 16px; right: 16px; width: 42px; height: 42px; font-size: 16px; }
         }
     </style>
 </head>
 <body>
+
+<a class="side-link" href="https://mtg.aschneider.tech/32dc/" target="_blank" rel="noopener">Also see: <strong>32 Deck Challenge tracker</strong> &rarr;</a>
 
 <div class="container">
     <header class="page-header">
