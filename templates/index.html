@@ -330,7 +330,32 @@
         .badge-retroshark { background: var(--retroshark); }
         .badge-default { background: var(--badge-default); }
 
-        .foil-star { position: absolute; top: 8px; right: 8px; font-size: 14px; color: #ffd700; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); }
+        /* Foil cards get a rainbow sheen drifting across the image, in two
+           layers: an overlay blend that richly tints mid and dark art, and a
+           plain low-opacity wash so the colors still show on white cards,
+           which overlay can't brighten any further. Both scroll right with a
+           transform, which is cheap to animate on many tiles at once. The
+           loop is seamless because the stripes repeat every 435px along the
+           115deg gradient, which is 435 / sin(115deg) = 480px horizontally,
+           exactly the distance each loop moves.
+           .foil-sheen must not get opacity, a transform or z-index: any of
+           those would isolate the layers and stop them blending with the
+           image. */
+        .foil-sheen { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+        .foil-sheen::before,
+        .foil-sheen::after {
+            content: ''; position: absolute; top: 0; bottom: 0; left: -480px; width: calc(100% + 480px);
+            background: repeating-linear-gradient(115deg,
+                #d24c8f 0, #cc9e33 87px, #2db376 174px, #3398cc 261px, #9a55d5 348px, #d24c8f 435px);
+            animation: foil-shimmer 7.5s linear infinite;
+            transition: opacity 0.2s;
+        }
+        .foil-sheen::before { mix-blend-mode: overlay; opacity: 0.6; }
+        .foil-sheen::after { opacity: 0.2; }
+        .card-tile:hover .foil-sheen::before { opacity: 0.8; }
+        .card-tile:hover .foil-sheen::after { opacity: 0.28; }
+        @keyframes foil-shimmer { from { transform: translateX(0); } to { transform: translateX(480px); } }
+        @media (prefers-reduced-motion: reduce) { .foil-sheen::before, .foil-sheen::after { animation: none; } }
         .foil-star-inline { color: var(--foil-gold); font-weight: 700; margin-left: 3px; }
 
         .tile-body { padding: 12px; }
@@ -925,8 +950,8 @@
             <a href="${item.storeUrl}" class="tile-link" target="_blank">
                 <div class="tile-image-wrap">
                     <img class="card-image" src="${imageUrl}" alt="${item.name}" loading="lazy">
+                    ${item.isFoil ? '<span class="foil-sheen" aria-hidden="true"></span>' : ''}
                     <div class="badge ${badgeClass}">${item.vendor}</div>
-                    ${item.isFoil ? '<span class="foil-star">★</span>' : ''}
                 </div>
                 <div class="tile-body">
                     <div class="card-name">${item.name}</div>
