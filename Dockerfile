@@ -26,6 +26,5 @@ RUN chmod +x invScrape.sh
 # Expose the port your Flask app runs on
 EXPOSE 5000
 
-# Start the application
-# CMD ["python", "app.py"]
-CMD ["python", "-u", "app.py"]
+# Start the application with gunicorn (settings in gunicorn.conf.py)
+CMD ["gunicorn", "app:app"]
