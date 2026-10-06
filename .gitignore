@@ -3,3 +3,4 @@ nginx.conf
 certs/
 MAINTENANCE.md
 static/circle.png
+data/

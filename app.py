@@ -1,13 +1,17 @@
 import os
+import base64
+import hashlib
 import json
 import queue
 import re
 import signal
+import sqlite3
 import subprocess
 import threading
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from flask import Flask, render_template, request, Response, send_from_directory
+from contextlib import closing
+from flask import Flask, render_template, request, Response, send_from_directory, redirect, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
@@ -48,9 +52,102 @@ def preview_title(q):
         return cards[0]
     return f"{cards[0]} + {len(cards) - 1} more"
 
+# Shared searches are stored server-side so links stay short (?s=<id>) no
+# matter how many cards are in the search. The DB lives in data/, which
+# setup.sh mounts as a Docker volume so links survive redeploys.
+SHARE_DB = os.path.join(app.root_path, 'data', 'shares.db')
+SHARE_ID_LEN = 8
+MAX_SHARE_BYTES = 50_000
+MAX_SHARE_LINES = 500
+
+
+def _share_db():
+    return sqlite3.connect(SHARE_DB, timeout=10)
+
+
+def init_share_db():
+    os.makedirs(os.path.dirname(SHARE_DB), exist_ok=True)
+    with closing(_share_db()) as db, db:
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS shares ("
+            " id TEXT PRIMARY KEY,"
+            " query TEXT NOT NULL,"
+            " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+        )
+
+
+init_share_db()
+
+
+def normalize_query(text):
+    """Trims each line and drops blank ones, so cosmetic whitespace differences
+    in the same card list map to the same share ID."""
+    return "\n".join(line.strip() for line in text.splitlines() if line.strip())
+
+
+def save_share(text):
+    """Stores a search and returns its ID: a prefix of the base64url SHA-256 of
+    the normalized text, so the same search always gets the same link. Returns
+    None if the search is empty or over the size limits."""
+    query = normalize_query(text)
+    if not query or len(query.encode()) > MAX_SHARE_BYTES or query.count("\n") >= MAX_SHARE_LINES:
+        return None
+    digest = base64.urlsafe_b64encode(hashlib.sha256(query.encode()).digest()).decode().rstrip("=")
+    with closing(_share_db()) as db, db:
+        # A different search already holding the 8-char prefix is vanishingly
+        # unlikely, but lengthen the ID rather than overwrite it if it happens.
+        for length in range(SHARE_ID_LEN, len(digest) + 1):
+            share_id = digest[:length]
+            row = db.execute("SELECT query FROM shares WHERE id = ?", (share_id,)).fetchone()
+            if row is None:
+                db.execute("INSERT INTO shares (id, query) VALUES (?, ?)", (share_id, query))
+                return share_id
+            if row[0] == query:
+                return share_id
+    return None
+
+
+def load_share(share_id):
+    with closing(_share_db()) as db:
+        row = db.execute("SELECT query FROM shares WHERE id = ?", (share_id,)).fetchone()
+    return row[0] if row else None
+
+
 @app.route('/')
 def index():
-    return render_template('index.html', preview_title=preview_title(request.args.get('q', '')))
+    q = request.args.get('q')
+    if q is not None:
+        # Old-style ?q= links: store the search and redirect to the short form.
+        # If it can't be stored (e.g. over the size limit), serve it as is.
+        share_id = save_share(q)
+        if share_id:
+            args = request.args.to_dict()
+            del args['q']
+            args['s'] = share_id
+            return redirect(url_for('index', **args))
+        query = q
+        missing = False
+    else:
+        share_id = request.args.get('s')
+        query = load_share(share_id) if share_id else None
+        missing = bool(share_id) and query is None
+    return render_template(
+        'index.html',
+        preview_title=preview_title(query or ''),
+        shared_query=query,
+        shared_missing=missing,
+    )
+
+
+@app.route('/share', methods=['POST'])
+def share():
+    text = (request.get_json(silent=True) or {}).get('text')
+    if not isinstance(text, str):
+        return {"error": "text must be a string"}, 400
+    share_id = save_share(text)
+    if share_id is None:
+        return {"error": "search must be non-empty and under the size limit"}, 413
+    return {"id": share_id}
 
 
 # Matches the two genuine-failure lines invScrape.sh logs (curl failing, or

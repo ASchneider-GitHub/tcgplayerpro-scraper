@@ -324,6 +324,7 @@
             border: 1px solid rgba(230, 57, 70, 0.35);
             text-transform: none; letter-spacing: normal; cursor: help;
         }
+        .status-error { color: #ff6b74; }
 
         #scrollToTop {
             position: fixed; bottom: 30px; right: 30px; width: 46px; height: 46px;
@@ -634,13 +635,16 @@
         setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1500);
     }
 
-    function copySearchLink() {
+    async function copySearchLink() {
         const input = document.getElementById('cardInput').value;
-        if (input.trim()) syncSearchToURL(input);
         const btn = document.getElementById('copyLinkBtn');
-        navigator.clipboard.writeText(location.href)
-            .then(() => flashButton(btn, 'Copied!'))
-            .catch(() => flashButton(btn, 'Copy failed'));
+        try {
+            if (input.trim()) await syncSearchToURL(input);
+            await navigator.clipboard.writeText(location.href);
+            flashButton(btn, 'Copied!');
+        } catch (err) {
+            flashButton(btn, 'Copy failed');
+        }
     }
 
     function markVendorError(query, vendor, message) {
@@ -859,17 +863,56 @@
         tiles.forEach(tile => grid.appendChild(tile));
     }
 
-    function syncSearchToURL(text) {
+    // Set by the server from ?s=<id> (or a legacy ?q=) in the page URL.
+    const SHARED_QUERY = {{ shared_query|tojson }};
+    const SHARED_MISSING = {{ shared_missing|tojson }};
+
+    // The text the current ?s= in the URL stands for, so repeat syncs skip
+    // the round trip, and a counter so a slow /share reply for an older
+    // search can't overwrite the URL of a newer one.
+    let urlSharedText = new URLSearchParams(location.search).has('s') ? SHARED_QUERY : null;
+    let syncSeq = 0;
+
+    function setURLParams(update) {
         const params = new URLSearchParams(location.search);
-        params.set('q', text);
-        history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
+        update(params);
+        const query = params.toString();
+        history.replaceState(null, '', query ? `${location.pathname}?${query}` : location.pathname);
+    }
+
+    async function syncSearchToURL(text) {
+        if (text === urlSharedText) return;
+        const seq = ++syncSeq;
+        try {
+            const response = await fetch('/share', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            if (!response.ok) throw new Error(`share failed: ${response.status}`);
+            const { id } = await response.json();
+            if (seq !== syncSeq) return;
+            setURLParams(p => { p.delete('q'); p.set('s', id); });
+            urlSharedText = text;
+        } catch (err) {
+            // Too big to store, or the server is unreachable: fall back to
+            // putting the whole search in the URL, which still works.
+            if (seq !== syncSeq) return;
+            setURLParams(p => { p.delete('s'); p.set('q', text); });
+            urlSharedText = null;
+        }
     }
 
     (function loadSearchFromURL() {
-        const q = new URLSearchParams(location.search).get('q');
-        if (q) {
-            document.getElementById('cardInput').value = q;
+        if (SHARED_QUERY) {
+            document.getElementById('cardInput').value = SHARED_QUERY;
             startSearch();
+        } else if (SHARED_MISSING) {
+            setURLParams(p => p.delete('s'));
+            const msg = document.createElement('span');
+            msg.className = 'status-error';
+            msg.textContent = "That shared search link wasn't found.";
+            document.getElementById('status').appendChild(msg);
         }
     })();
 </script>
