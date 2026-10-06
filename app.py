@@ -29,7 +29,7 @@ log.addFilter(HealthCheckFilter())
 
 # invScrape.sh already fires 3 concurrent vendor requests per card, so this
 # caps total concurrent vendor-API hits at MAX_CONCURRENT_CARDS * 3. Kept low
-# by default since the target stores actively ban scraper IPs (see README).
+# by default since the target stores actively ban scraper IPs.
 MAX_CONCURRENT_CARDS = int(os.environ.get("MAX_CONCURRENT_CARDS", 2))
 
 @app.route('/favicon.ico')
@@ -39,6 +39,19 @@ def favicon():
 @app.route('/status')
 def status():
     return "OK", 200
+
+# Keeps well-behaved crawlers off the search endpoints and old ?q= links (which
+# save a search on visit). ?s= share links stay allowed, since some link-preview
+# bots (e.g. X's) obey robots.txt and would otherwise show no preview.
+ROBOTS_TXT = """User-agent: *
+Disallow: /search
+Disallow: /share
+Disallow: /?q=
+"""
+
+@app.route('/robots.txt')
+def robots_txt():
+    return Response(ROBOTS_TXT, mimetype='text/plain')
 
 # Mirrors the quantity-prefix stripping in startSearch() (index.html).
 QTY_PREFIX = re.compile(r"^\s*(?:\d+[xX]?\s*)?")
