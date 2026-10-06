@@ -20,6 +20,18 @@
     <meta name="twitter:title" content="{{ preview_title }}">
     <meta name="twitter:description" content="Search for Magic: the Gathering singles across local game stores.">
     <meta name="twitter:image" content="{{ request.url_root }}static/og-image.png?v=5">
+    <script>
+        // Runs before the page paints so light-mode visitors don't see a dark
+        // flash: a saved choice wins, otherwise follow the system setting.
+        (function () {
+            var theme;
+            try { theme = localStorage.getItem('theme'); } catch (e) {}
+            if (theme !== 'light' && theme !== 'dark') {
+                theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            }
+            document.documentElement.dataset.theme = theme;
+        })();
+    </script>
     <style>
         :root {
             --bg-dark: #0e1012;
@@ -35,6 +47,31 @@
             --retroshark: #2a9d8f;
             --redcastle: #e63946;
             --goingaming: #23a559;
+            --error-text: #ff6b74;
+            --foil-gold: #ffd700;
+            --badge-default: #2c3036;
+            --spinner-track: rgba(255,255,255,0.12);
+            --shadow-color: rgba(0,0,0,0.4);
+            color-scheme: dark;
+        }
+
+        /* data-theme is set before first paint by the script in <head>. */
+        :root[data-theme="light"] {
+            --bg-dark: #f3f4f6;
+            --surface-dark: #ffffff;
+            --surface-raised: #f7f8fa;
+            --border-color: #d8dbe0;
+            --text-main: #16181c;
+            --text-dim: #4f555e;
+            --text-faint: #646a73;
+            --accent-blue-bright: #4752c4;
+            --accent-green: #1a8045;
+            --error-text: #c8202f;
+            --foil-gold: #a87a00;
+            --badge-default: #646a73;
+            --spinner-track: rgba(0,0,0,0.1);
+            --shadow-color: rgba(20,24,30,0.12);
+            color-scheme: light;
         }
 
         * { box-sizing: border-box; }
@@ -165,7 +202,7 @@
             align-items: center;
         }
 
-        .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.12); border-top-color: var(--accent-blue-bright); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
+        .spinner { width: 14px; height: 14px; border: 2px solid var(--spinner-track); border-top-color: var(--accent-blue-bright); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
         .checkmark { color: var(--accent-green); font-weight: bold; margin-right: 6px; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -274,7 +311,7 @@
         }
         .card-tile.hidden-by-filter { display: none !important; }
         .card-tile.hidden-by-merge { display: none !important; }
-        .card-tile:hover { border-color: var(--accent-blue); transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.35); }
+        .card-tile:hover { border-color: var(--accent-blue); transform: translateY(-3px); box-shadow: 0 10px 24px var(--shadow-color); }
 
         .tile-link { text-decoration: none; color: inherit; display: block; }
 
@@ -291,10 +328,10 @@
         .badge-redcastle { background: var(--redcastle); }
         .badge-goingaming { background: var(--goingaming); }
         .badge-retroshark { background: var(--retroshark); }
-        .badge-default { background: var(--border-color); }
+        .badge-default { background: var(--badge-default); }
 
         .foil-star { position: absolute; top: 8px; right: 8px; font-size: 14px; color: #ffd700; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); }
-        .foil-star-inline { color: #ffd700; font-weight: 700; margin-left: 3px; }
+        .foil-star-inline { color: var(--foil-gold); font-weight: 700; margin-left: 3px; }
 
         .tile-body { padding: 12px; }
         .card-name { font-weight: 600; font-size: 13.5px; color: var(--text-main); margin-bottom: 2px; line-height: 1.25; }
@@ -320,31 +357,65 @@
         .term-errors:empty { display: none; }
         .vendor-error-badge {
             font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
-            background: rgba(230, 57, 70, 0.12); color: #ff6b74;
+            background: rgba(230, 57, 70, 0.12); color: var(--error-text);
             border: 1px solid rgba(230, 57, 70, 0.35);
             text-transform: none; letter-spacing: normal; cursor: help;
         }
-        .status-error { color: #ff6b74; }
+        .status-error { color: var(--error-text); }
 
         #scrollToTop {
             position: fixed; bottom: 30px; right: 30px; width: 46px; height: 46px;
             border-radius: 50%; background: var(--accent-blue); color: white;
-            border: none; cursor: pointer; font-size: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            border: none; cursor: pointer; font-size: 18px; box-shadow: 0 4px 15px var(--shadow-color);
             z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s;
         }
         #scrollToTop.show { opacity: 1; visibility: visible; }
         #scrollToTop:hover { background: var(--accent-blue-bright); }
 
-        .side-link {
+        .top-actions {
             position: fixed; top: 16px; right: 16px; z-index: 1000;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .side-link {
             display: inline-flex; align-items: center; gap: 6px;
             padding: 8px 14px; border-radius: 999px;
             background: var(--surface-raised); border: 1px solid var(--border-color);
             color: var(--text-dim); font-size: 13px; text-decoration: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4); transition: all 0.2s;
+            box-shadow: 0 4px 15px var(--shadow-color); transition: all 0.2s;
         }
         .side-link strong { color: var(--text-main); font-weight: 600; }
         .side-link:hover { border-color: var(--accent-blue); color: var(--text-main); }
+
+        /* Light/dark switch: sun on the left, moon on the right, and a blue
+           knob that slides to the active mode. */
+        .theme-switch {
+            position: relative; flex-shrink: 0;
+            width: 68px; height: 36px; padding: 0;
+            border-radius: 999px;
+            background: var(--surface-raised); border: 1px solid var(--border-color);
+            box-shadow: 0 4px 15px var(--shadow-color);
+        }
+        .theme-switch:not(:disabled):hover { border-color: var(--accent-blue); }
+        .theme-switch:focus-visible { outline: 2px solid var(--accent-blue-bright); outline-offset: 2px; }
+        .theme-switch .track-icon {
+            position: absolute; top: 50%; width: 14px; height: 14px;
+            transform: translateY(-50%); color: var(--text-faint);
+        }
+        .theme-switch .track-icon.sun { left: 10px; }
+        .theme-switch .track-icon.moon { right: 10px; }
+        .theme-switch svg { display: block; width: 100%; height: 100%; }
+        .theme-switch .knob {
+            position: absolute; top: 3px; left: 3px;
+            width: 28px; height: 28px; border-radius: 50%;
+            background: var(--accent-blue); color: white;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            transition: transform 0.2s ease;
+        }
+        .theme-switch .knob span { width: 15px; height: 15px; }
+        :root[data-theme="dark"] .theme-switch .knob { transform: translateX(32px); }
+        :root[data-theme="dark"] .theme-switch .knob .sun,
+        :root[data-theme="light"] .theme-switch .knob .moon { display: none; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -379,7 +450,8 @@
             .card-set { font-size: 10.5px; }
             .price { font-size: 14px; }
 
-            .side-link { position: static; display: flex; justify-content: center; margin-bottom: 16px; font-size: 12px; }
+            .top-actions { position: static; margin-bottom: 16px; }
+            .side-link { flex: 1; justify-content: center; font-size: 12px; }
             #scrollToTop { bottom: 16px; right: 16px; width: 42px; height: 42px; font-size: 16px; }
         }
     </style>
@@ -387,7 +459,14 @@
 <body>
 
 <div class="container">
-    <a class="side-link" href="https://mtg.aschneider.tech/32dc/" target="_blank" rel="noopener">Also see: <strong>32 Deck Challenge tracker</strong> &rarr;</a>
+    <div class="top-actions">
+        <button type="button" class="theme-switch" id="themeSwitch" role="switch" aria-checked="true" aria-label="Dark mode" title="Switch light / dark mode" onclick="toggleTheme()">
+            <span class="track-icon sun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></span>
+            <span class="track-icon moon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+            <span class="knob"><span class="sun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></span><span class="moon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span></span>
+        </button>
+        <a class="side-link" href="https://mtg.aschneider.tech/32dc/" target="_blank" rel="noopener">Also see: <strong>32 Deck Challenge tracker</strong> &rarr;</a>
+    </div>
 
     <header class="page-header">
         <div class="title-block">
@@ -467,6 +546,26 @@
 <button id="scrollToTop" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑</button>
 
 <script>
+    function applyTheme(theme) {
+        document.documentElement.dataset.theme = theme;
+        document.getElementById('themeSwitch').setAttribute('aria-checked', String(theme === 'dark'));
+    }
+
+    function toggleTheme() {
+        const theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+        applyTheme(theme);
+        try { localStorage.setItem('theme', theme); } catch (e) {}
+    }
+
+    applyTheme(document.documentElement.dataset.theme);
+
+    // Until the visitor picks a theme, keep following the system setting.
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', e => {
+        let saved = null;
+        try { saved = localStorage.getItem('theme'); } catch (err) {}
+        if (!saved) applyTheme(e.matches ? 'light' : 'dark');
+    });
+
     let isSearching = false;
     let currentAbortController = null;
     const allowedStores = new Set(['redcastle', 'goingaming', 'retroshark']);
