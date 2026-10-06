@@ -514,7 +514,7 @@
         <div class="action-row">
             <button id="searchBtn" class="btn-search" onclick="startSearch()">Search</button>
             <button id="copyLinkBtn" type="button" class="btn-clear" onclick="copySearchLink()">Copy Link</button>
-            <button id="resetBtn" class="btn-clear" onclick="stopAndReset()">Clear</button>
+            <button id="resetBtn" class="btn-clear" onclick="isSearching ? stopSearch() : clearSearch()">Clear</button>
             <div id="status"></div>
         </div>
     </div>
@@ -653,14 +653,13 @@
         });
     }
 
-    function stopAndReset() {
-        if (currentAbortController) {
-            currentAbortController.abort();
-            currentAbortController = null;
-        }
-        isSearching = false;
-        document.getElementById('searchBtn').disabled = false;
-        document.getElementById('resetBtn').textContent = 'Clear';
+    // Stop keeps whatever has loaded; startSearch() handles the abort and
+    // marks the cards that never got searched.
+    function stopSearch() {
+        if (currentAbortController) currentAbortController.abort();
+    }
+
+    function clearSearch() {
         document.getElementById('output').innerHTML = "";
         document.getElementById('status').innerHTML = "";
         document.getElementById('cardInput').value = "";
@@ -725,9 +724,16 @@
     let cardsTotal = 0;
     let cardsDone = 0;
 
+    // Only the counter text changes as cards finish; rebuilding the spinner
+    // element each time would restart its animation.
     function updateStatus() {
         const statusDiv = document.getElementById('status');
-        statusDiv.innerHTML = `<span class="spinner"></span> Searching&hellip; (${cardsDone}/${cardsTotal})`;
+        let progress = statusDiv.querySelector('.status-progress');
+        if (!progress) {
+            statusDiv.innerHTML = '<span class="spinner"></span><span class="status-progress"></span>';
+            progress = statusDiv.querySelector('.status-progress');
+        }
+        progress.textContent = `Searching\u2026 (${cardsDone}/${cardsTotal})`;
     }
 
     function handleGlobalHotkeys(e) {
@@ -859,7 +865,10 @@
             }
             statusDiv.innerHTML = '<span class="checkmark">&#10003;</span> Done';
         } catch (err) {
-            if (err.name !== 'AbortError') {
+            if (err.name === 'AbortError') {
+                statusDiv.textContent = `Stopped (${cardsDone}/${cardsTotal} searched)`;
+                markUnsearchedGroups();
+            } else {
                 statusDiv.innerHTML = "Error connecting to backend";
             }
         } finally {
@@ -894,10 +903,22 @@
         const safeId = `term-${btoa(query).replace(/[^a-zA-Z0-9]/g, '')}`;
         const groupEl = document.getElementById(safeId);
         if (!groupEl) return;
+        groupEl.dataset.done = '1';
         const grid = groupEl.querySelector('.results-grid');
         if (grid.children.length === 0) {
             grid.innerHTML = '<div class="empty-state">No listings found</div>';
         }
+    }
+
+    // After Stop: cards that never finished and have nothing to show get a
+    // note instead of an empty section. Partly searched cards keep their tiles.
+    function markUnsearchedGroups() {
+        document.querySelectorAll('.search-term-group:not([data-done])').forEach(groupEl => {
+            const grid = groupEl.querySelector('.results-grid');
+            if (grid.children.length === 0) {
+                grid.innerHTML = '<div class="empty-state">Not searched (stopped)</div>';
+            }
+        });
     }
 
     function renderTile(headerTerm, item) {
