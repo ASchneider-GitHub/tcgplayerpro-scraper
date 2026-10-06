@@ -36,9 +36,21 @@ def favicon():
 def status():
     return "OK", 200
 
+# Mirrors the quantity-prefix stripping in startSearch() (index.html).
+QTY_PREFIX = re.compile(r"^\s*(?:\d+[xX]?\s*)?")
+
+def preview_title(q):
+    """Link-preview title for a shared search: first card plus remaining count."""
+    cards = [c for c in (QTY_PREFIX.sub("", line).strip() for line in q.split("\n")) if c]
+    if not cards:
+        return "LGS Singles Search"
+    if len(cards) == 1:
+        return cards[0]
+    return f"{cards[0]} + {len(cards) - 1} more"
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', preview_title=preview_title(request.args.get('q', '')))
 
 
 # Matches the two genuine-failure lines invScrape.sh logs (curl failing, or
