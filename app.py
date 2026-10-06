@@ -32,6 +32,13 @@ log.addFilter(HealthCheckFilter())
 # by default since the target stores actively ban scraper IPs.
 MAX_CONCURRENT_CARDS = int(os.environ.get("MAX_CONCURRENT_CARDS", 2))
 
+# Cards that start together tend to finish together, so results would arrive
+# in bursts of MAX_CONCURRENT_CARDS. Delaying each worker's first card by this
+# many seconds offsets them; after that each worker starts its next card as
+# soon as one finishes, so the offset carries through the search. Ideally
+# about a typical card's search time divided by MAX_CONCURRENT_CARDS.
+CARD_STAGGER_SECONDS = float(os.environ.get("CARD_STAGGER_SECONDS", 0.3))
+
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
@@ -193,8 +200,9 @@ def _drain_stderr(card, stderr, q):
             })
 
 
-def run_one_card(card, q, active_procs, active_procs_lock, cancel_event):
-    if cancel_event.is_set():
+def run_one_card(card, q, active_procs, active_procs_lock, cancel_event, start_delay=0):
+    # wait() rather than sleep() so a cancelled search doesn't sit out the delay.
+    if cancel_event.wait(start_delay) or cancel_event.is_set():
         return
     q.put({"type": "card_start", "query": card})
     proc = subprocess.Popen(
@@ -247,8 +255,9 @@ def search():
         cancel_event = threading.Event()
         executor = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_CARDS)
 
-        for card in cleaned:
-            executor.submit(run_one_card, card, q, active_procs, active_procs_lock, cancel_event)
+        for i, card in enumerate(cleaned):
+            start_delay = i * CARD_STAGGER_SECONDS if i < MAX_CONCURRENT_CARDS else 0
+            executor.submit(run_one_card, card, q, active_procs, active_procs_lock, cancel_event, start_delay)
 
         finished = 0
         try:
