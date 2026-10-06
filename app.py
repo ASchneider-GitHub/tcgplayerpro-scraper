@@ -176,6 +176,10 @@ def share():
 # result, not an error, and intentionally doesn't match this.
 _VENDOR_ERROR_RE = re.compile(r'^\[(?P<vendor>[\w.-]+)\] (?P<msg>curl failed on .*|unexpected .* response.*)$')
 
+# invScrape.sh's routine per-vendor timing/count line. Logged at INFO; any
+# other stderr output (failures, bash/jq errors) stays at WARNING.
+_VENDOR_STATS_RE = re.compile(r"^\[[\w.-]+\] query='.*' catalog_items=\d+")
+
 
 def _drain_stderr(card, stderr, q):
     # invScrape.sh's curl/jq calls fail silently on their own (no error
@@ -189,7 +193,8 @@ def _drain_stderr(card, stderr, q):
         line = line.strip()
         if not line:
             continue
-        scrape_log.warning(f"[{card}] stderr: {line}")
+        level = logging.INFO if _VENDOR_STATS_RE.match(line) else logging.WARNING
+        scrape_log.log(level, f"[{card}] stderr: {line}")
         m = _VENDOR_ERROR_RE.match(line)
         if m:
             q.put({
