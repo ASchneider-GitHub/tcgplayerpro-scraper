@@ -597,6 +597,18 @@
     let allResults = [];
     let mergeResults = true;
 
+    // Each card's results section, keyed by the card name as sent to /search.
+    const groupsByTerm = new Map();
+
+    // Card names come from the user (and from shared links, which search on
+    // load) and listing fields from the store APIs, so escape them before
+    // building HTML out of them.
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[ch]);
+    }
+
     const CONDITION_ORDER = ['Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played', 'Damaged'];
     function conditionRank(conditionName) {
         const base = (conditionName || '').replace(/\s*Foil\s*$/i, '').trim();
@@ -661,6 +673,7 @@
 
     function clearSearch() {
         document.getElementById('output').innerHTML = "";
+        groupsByTerm.clear();
         document.getElementById('status').innerHTML = "";
         document.getElementById('cardInput').value = "";
         storeCounts = { redcastle: 0, goingaming: 0, retroshark: 0 };
@@ -778,8 +791,7 @@
     }
 
     function markVendorError(query, vendor, message) {
-        const safeId = `term-${btoa(query).replace(/[^a-zA-Z0-9]/g, '')}`;
-        const groupEl = document.getElementById(safeId);
+        const groupEl = groupsByTerm.get(query);
         if (!groupEl) return;
         const errBox = groupEl.querySelector('.term-errors');
         if (!errBox || errBox.querySelector(`[data-vendor="${vendor}"]`)) return;
@@ -804,6 +816,7 @@
         syncSearchToURL(input);
 
         document.getElementById('output').innerHTML = "";
+        groupsByTerm.clear();
         document.getElementById('status').innerHTML = "";
 
         storeCounts = { redcastle: 0, goingaming: 0, retroshark: 0 };
@@ -889,19 +902,17 @@
 
     function createGroup(term) {
         const output = document.getElementById('output');
-        const safeId = `term-${btoa(term).replace(/[^a-zA-Z0-9]/g, '')}`;
-        if (!document.getElementById(safeId)) {
+        if (!groupsByTerm.has(term)) {
             const group = document.createElement('div');
-            group.id = safeId;
             group.className = 'search-term-group';
-            group.innerHTML = `<div class="term-header">${term}</div><div class="term-errors"></div><div class="results-grid"></div>`;
+            group.innerHTML = `<div class="term-header">${escapeHtml(term)}</div><div class="term-errors"></div><div class="results-grid"></div>`;
             output.appendChild(group);
+            groupsByTerm.set(term, group);
         }
     }
 
     function finalizeGroup(query) {
-        const safeId = `term-${btoa(query).replace(/[^a-zA-Z0-9]/g, '')}`;
-        const groupEl = document.getElementById(safeId);
+        const groupEl = groupsByTerm.get(query);
         if (!groupEl) return;
         groupEl.dataset.done = '1';
         const grid = groupEl.querySelector('.results-grid');
@@ -922,8 +933,7 @@
     }
 
     function renderTile(headerTerm, item) {
-        const safeId = `term-${btoa(headerTerm).replace(/[^a-zA-Z0-9]/g, '')}`;
-        const groupEl = document.getElementById(safeId);
+        const groupEl = groupsByTerm.get(headerTerm);
         if (!groupEl) return;
 
         const grid = groupEl.querySelector('.results-grid');
@@ -968,17 +978,17 @@
         const imageUrl = `https://tcgplayer-cdn.tcgplayer.com/product/${item.productId}_200w.jpg`;
 
         tile.innerHTML = `
-            <a href="${item.storeUrl}" class="tile-link" target="_blank">
+            <a href="${escapeHtml(item.storeUrl)}" class="tile-link" target="_blank">
                 <div class="tile-image-wrap">
-                    <img class="card-image" src="${imageUrl}" alt="${item.name}" loading="lazy">
+                    <img class="card-image" src="${imageUrl}" alt="${escapeHtml(item.name)}" loading="lazy">
                     ${item.isFoil ? '<span class="foil-sheen" aria-hidden="true"></span>' : ''}
-                    <div class="badge ${badgeClass}">${item.vendor}</div>
+                    <div class="badge ${badgeClass}">${escapeHtml(item.vendor)}</div>
                 </div>
                 <div class="tile-body">
-                    <div class="card-name">${item.name}</div>
-                    <div class="card-set">${item.setName}</div>
+                    <div class="card-name">${escapeHtml(item.name)}</div>
+                    <div class="card-set">${escapeHtml(item.setName)}</div>
                     <div class="tile-meta">
-                        <span class="condition">${item.conditionName}${item.isFoil ? ' <span class="foil-star-inline">★</span>' : ''}</span>
+                        <span class="condition">${escapeHtml(item.conditionName)}${item.isFoil ? ' <span class="foil-star-inline">★</span>' : ''}</span>
                         <span class="price">$${parseFloat(item.price).toFixed(2)}</span>
                     </div>
                     <span class="store-link">View Store &rarr;</span>
